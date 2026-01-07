@@ -71,7 +71,7 @@ const HomePage = ({ user }) => {
     // --- 2. ดึงข้อมูล "วันที่ไม่ว่าง" ---
     let occupiedDates = [];
     try {
-        const response = await fetch(`http://localhost:3001/bookings/occupied?room_name=${roomType}`);
+        const response = await fetch(`https://hotel-booking-web-kfks.onrender.com/bookings/occupied?room_name=${roomType}`);
         const data = await response.json();
         
         if (Array.isArray(data)) {
@@ -247,7 +247,7 @@ const HomePage = ({ user }) => {
         formData.append('payment_method', paymentData.method);
         formData.append('slip', paymentData.file);
 
-        const response = await fetch('http://localhost:3001/reserve', {
+        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/reserve', {
           method: 'POST',
           body: formData
         });

@@ -69,7 +69,7 @@ const ForgotPassword = () => {
 
       // ส่งข้อมูลไปบันทึกที่ Database
       try {
-        const response = await fetch('http://localhost:3001/reset-password', {
+        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/reset-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

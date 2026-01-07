@@ -37,7 +37,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
 
       // ถ้ามีรูปในฐานข้อมูล ให้โชว์รูปนั้น
       if (user?.profile_image) {
-        setPreview(`http://localhost:3001/uploads/${user.profile_image}`);
+        setPreview(`https://hotel-booking-web-kfks.onrender.com/uploads/${user.profile_image}`);
       } else {
         setPreview(null);
       }
@@ -69,7 +69,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
             data.append('profile_image', imageFile);
         }
 
-        const response = await fetch('http://localhost:3001/update-user', {
+        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/update-user', {
             method: 'PUT',
             body: data
         });
@@ -91,7 +91,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
 
                 // อัปเดต Preview รูปในหน้านี้ทันที + ใส่ timestamp กัน Cache
                 if (result.user.profile_image) {
-                    setPreview(`http://localhost:3001/uploads/${result.user.profile_image}?t=${Date.now()}`);
+                    setPreview(`https://hotel-booking-web-kfks.onrender.com/uploads/${result.user.profile_image}?t=${Date.now()}`);
                 }
                 
                 setImageFile(null);

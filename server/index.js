@@ -27,9 +27,9 @@ const upload = multer({ storage: storage });
 const db = mysql.createConnection({
     host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     port: 4000,
-    user: '4AKVQ3Y8J5JBMZV.root',
-    password: 'UTbdfy88QFshsFAx',
-    database: 'hotel',
+    user: '3139LmZoDYQEp3K.root',
+    password: 'vXF32FzROBw8ZqKw',
+    database: 'test',
     ssl: {
         minVersion: 'TLSv1.2',
         rejectUnauthorized: true

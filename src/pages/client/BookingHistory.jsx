@@ -14,7 +14,7 @@ const BookingHistory = ({ user }) => {
   useEffect(() => {
     if (user) {
       const userId = user.id || user.user_id || user.ID; 
-      fetch(`http://localhost:3001/my-bookings/${userId}`)
+      fetch(`https://hotel-booking-web-kfks.onrender.com/my-bookings/${userId}`)
         .then(res => res.json())
         .then(data => setBookings(data))
         .catch(err => console.error(err));
@@ -69,7 +69,7 @@ const BookingHistory = ({ user }) => {
     });
 
     if (result.isConfirmed) {
-      fetch('http://localhost:3001/cancel-booking', {
+      fetch('https://hotel-booking-web-kfks.onrender.com/cancel-booking', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ booking_id: bookingId })
@@ -106,7 +106,7 @@ const BookingHistory = ({ user }) => {
     let occupiedDates = [];
     try {
         // ใช้ encodeURIComponent เพื่อป้องกันกรณีชื่อห้องมีวรรค
-        const response = await fetch(`http://localhost:3001/bookings/occupied?room_name=${encodeURIComponent(roomName)}`);
+        const response = await fetch(`https://hotel-booking-web-kfks.onrender.com/bookings/occupied?room_name=${encodeURIComponent(roomName)}`);
         const data = await response.json();
         
         if (Array.isArray(data)) {
@@ -223,7 +223,7 @@ const BookingHistory = ({ user }) => {
       });
 
       if (confirmResult.isConfirmed) {
-          fetch('http://localhost:3001/request-reschedule', {
+          fetch('https://hotel-booking-web-kfks.onrender.com/request-reschedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
