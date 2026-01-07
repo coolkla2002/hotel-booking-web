@@ -9,11 +9,13 @@ const multer = require('multer');
 
 const app = express();
 app.use(cors({
-    origin: ["http://localhost:5173", "https://hotel-booking-web-abc.vercel.app"], // อนุญาตให้หน้าเว็บที่รันในเครื่องคุณส่งข้อมูลมาได้
+    origin: [
+        "http://localhost:5173", 
+        "https://hotel-booking-web-eight.vercel.app" // ก๊อปปี้ลิงก์นี้ไปวางแทนที่ของเดิมครับ
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
-app.use(express.json());
 
 // Config Uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
