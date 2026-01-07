@@ -24,7 +24,7 @@ const upload = multer({ storage: storage });
 
 
 // Database Connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
     port: 4000,
     user: '3139LmZoDYQEp3K.root',
@@ -36,10 +36,7 @@ const db = mysql.createConnection({
     }
   });
   
-  db.connect((err) => {
-    if (err) console.error('❌ DB Error:', err);
-    else console.log('✅ MySQL Connected');
-  });
+
 
 // --- API หลัก ---
 
@@ -68,14 +65,19 @@ app.post('/admin-login', (req, res) => {
 // ✅ ส่วน B: สมัครสมาชิก (ใช้ phone)
 app.post('/register', (req, res) => {
     const { name, email, password, phone } = req.body;
-    db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
-        if (results.length > 0) return res.status(400).json({ success: false, message: 'Email taken' });
-        
-        // เพิ่ม role='user' เป็นค่าเริ่มต้น
-        db.query("INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, 'user')", [name, email, password, phone], (err) => {
-            if (err) return res.status(500).json(err);
-            res.json({ success: true });
-        });
+    db.query(sqlCheck, [email], (err, results) => {
+        // 1. ดักจับ Error ก่อน! ถ้ามีปัญหา ให้แจ้งเตือน ไม่ใช่พัง
+        if (err) {
+            console.error("❌ Database Error:", err);
+            return res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Database", error: err.message });
+        }
+    
+        // 2. ถ้าไม่มี Error ค่อยเช็คผลลัพธ์
+        if (results.length > 0) {
+            return res.status(400).json({ success: false, message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+        }
+    
+        // ... ส่วนบันทึกข้อมูล (INSERT) ทำต่อด้านล่าง ...
     });
 });
 
