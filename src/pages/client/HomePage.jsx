@@ -284,7 +284,7 @@ const HomePage = ({ user }) => {
         <div className="mb-24 bg-white rounded-[3rem] p-6 shadow-xl shadow-blue-100/50 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
             <div className="grid grid-cols-3 gap-4 mb-8 h-[450px] md:h-[500px]">
               <div className="col-span-2 h-full rounded-3xl overflow-hidden shadow-md border-4 border-white">
-                <img src="images/IMG_5827.jpg" alt="Double Room Main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800" alt="Double Room Main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
               </div>
               <div className="grid grid-rows-2 gap-4 h-full">
                   <div className="rounded-3xl overflow-hidden shadow-md border-4 border-white">
@@ -339,7 +339,7 @@ const HomePage = ({ user }) => {
             {/* ส่วนรูปภาพ */}
             <div className="grid grid-cols-3 gap-4 mb-8 h-[450px] md:h-[500px]">
               <div className="col-span-2 h-full rounded-3xl overflow-hidden shadow-md border-4 border-white">
-                <img src="images/8a011ebd-aecf-4d85-b0dd-0f761e983e46.jpg" alt="Single Room Main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+                <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800" alt="Single Room Main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
               </div>
               <div className="grid grid-rows-2 gap-4 h-full">
                   <div className="rounded-3xl overflow-hidden shadow-md border-4 border-white">
