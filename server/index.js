@@ -33,7 +33,7 @@ const db = mysql.createPool({
     port: 4000,
     user: '3139LmZoDYQEp3K.root',
     password: 'vXF32FzROBw8ZqKw',
-    database: 'hotel',
+    database: 'test',
     ssl: {
         minVersion: 'TLSv1.2',
         rejectUnauthorized: true
