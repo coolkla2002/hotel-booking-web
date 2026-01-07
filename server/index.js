@@ -8,7 +8,11 @@ const fs = require('fs');
 const multer = require('multer');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: "http://localhost:5173", // อนุญาตให้หน้าเว็บที่รันในเครื่องคุณส่งข้อมูลมาได้
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+}));
 app.use(express.json());
 
 // Config Uploads
