@@ -228,6 +228,26 @@ app.post('/admin/approve-reschedule', (req, res) => {
     }
 });
 
+// ✅ เพิ่ม API สำหรับตั้งรหัสผ่านใหม่ (Forgot Password)
+app.post('/reset-password', (req, res) => {
+    const { email, password } = req.body; // รับอีเมลและรหัสผ่านใหม่จากหน้าบ้าน
+
+    // 1. ตรวจสอบก่อนว่ามีอีเมลนี้ในระบบไหม
+    db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
+        }
+
+        // 2. ถ้าพบอีเมล ให้ทำการอัปเดตรหัสผ่านใหม่
+        db.query("UPDATE users SET password = ? WHERE email = ?", [password, email], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.status(200).json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จแล้ว' });
+        });
+    });
+});
+
 const port = process.env.PORT || 3000; 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
