@@ -69,19 +69,23 @@ app.post('/admin-login', (req, res) => {
 // ✅ ส่วน B: สมัครสมาชิก (ใช้ phone)
 app.post('/register', (req, res) => {
     const { name, email, password, phone } = req.body;
+
+    // 1. สร้างตัวแปร sqlCheck เพื่อเช็คว่าอีเมลซ้ำไหม
+    const sqlCheck = "SELECT * FROM users WHERE email = ?";
+    
     db.query(sqlCheck, [email], (err, results) => {
-        // 1. ดักจับ Error ก่อน! ถ้ามีปัญหา ให้แจ้งเตือน ไม่ใช่พัง
-        if (err) {
-            console.error("❌ Database Error:", err);
-            return res.status(500).json({ success: false, message: "เกิดข้อผิดพลาดที่ Database", error: err.message });
-        }
-    
-        // 2. ถ้าไม่มี Error ค่อยเช็คผลลัพธ์
+        if (err) return res.status(500).json({ success: false, message: err.message });
+        
         if (results.length > 0) {
-            return res.status(400).json({ success: false, message: 'อีเมลนี้ถูกใช้งานแล้ว' });
+            return res.status(400).json({ success: false, message: 'Email already taken' });
         }
-    
-        // ... ส่วนบันทึกข้อมูล (INSERT) ทำต่อด้านล่าง ...
+
+        // 2. ถ้าไม่ซ้ำ ให้บันทึกข้อมูล
+        const sqlInsert = "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)";
+        db.query(sqlInsert, [name, email, password, phone], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.status(200).json({ success: true, message: 'User registered successfully' });
+        });
     });
 });
 
