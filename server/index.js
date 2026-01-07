@@ -8,10 +8,15 @@ const fs = require('fs');
 const multer = require('multer');
 
 const app = express();
+
+// --- ย้าย express.json มาไว้ตรงนี้ เพื่อให้ Server อ่านข้อมูลจากหน้าบ้านได้ (แก้ Error 500) ---
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 app.use(cors({
     origin: [
         "http://localhost:5173", 
-        "https://hotel-booking-web-eight.vercel.app" // ก๊อปปี้ลิงก์นี้ไปวางแทนที่ของเดิมครับ
+        "https://hotel-booking-web-eight.vercel.app" //
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
@@ -40,8 +45,7 @@ const db = mysql.createPool({
         minVersion: 'TLSv1.2',
         rejectUnauthorized: true
     }
-  });
-  
+});
 
 
 // --- API หลัก ---
@@ -150,9 +154,7 @@ app.post('/reserve', upload.single('slip'), (req, res) => {
         if (results.length > 0) return res.status(400).json({ success: false, message: 'Room Occupied (ห้องไม่ว่างในช่วงเวลานี้)' });
         
         // 2. ถ้าว่าง ให้บันทึก
-        // เพิ่ม booking_date เข้าไปในรายชื่อคอลัมน์ และเพิ่ม NOW() เข้าไปอีกตัวใน VALUES
-// เปลี่ยน NOW() เป็น DATE_ADD(NOW(), INTERVAL 7 HOUR) เพื่อแก้เวลาไทย
-const sql = "INSERT INTO bookings (user_id, room_name, price, check_in_date, check_out_date, status, payment_method, payment_slip, created_at, booking_date) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, DATE_ADD(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 7 HOUR))";
+        const sql = "INSERT INTO bookings (user_id, room_name, price, check_in_date, check_out_date, status, payment_method, payment_slip, created_at, booking_date) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, DATE_ADD(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 7 HOUR))";
         db.query(sql, [user_id, room_name, price, checkIn, checkOut, payment_method, payment_slip], (err) => {
             if (err) return res.status(500).json(err);
             res.json({ success: true });
