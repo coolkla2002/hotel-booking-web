@@ -1,6 +1,6 @@
 // client/src/pages/client/HomePage.jsx
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import flatpickr from "flatpickr";
@@ -21,6 +21,40 @@ const CheckIconGreen = () => (
 
 const HomePage = ({ user }) => {
   const navigate = useNavigate();
+
+  // ✅ 1. เพิ่ม State เก็บจำนวนห้องว่าง (ค่าเริ่มต้น 15)
+  const [availability, setAvailability] = useState({
+    "Double Room": 15, 
+    "Single Room": 15  
+  });
+
+  // ✅ 2. เพิ่ม useEffect ดึงข้อมูลห้องว่างจาก Server
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        // เช็คห้อง Double Room
+        const resDouble = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Double Room`);
+        const dataDouble = await resDouble.json();
+        
+        // เช็คห้อง Single Room
+        const resSingle = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Single Room`);
+        const dataSingle = await resSingle.json();
+
+        setAvailability({
+          "Double Room": dataDouble.available, // รับค่าที่คำนวณมาแล้ว (15 - booked)
+          "Single Room": dataSingle.available
+        });
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      }
+    };
+
+    fetchAvailability();
+    
+    // รีเฟรชข้อมูลทุก 10 วินาที เพื่อให้ Realtime
+    const interval = setInterval(fetchAvailability, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ✅ แก้ไข: เช็ค Admin/Manager แล้วดีดไปหน้า Dashboard แทนการลบ User ทิ้ง
   useEffect(() => {
@@ -302,7 +336,16 @@ const HomePage = ({ user }) => {
               
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 relative z-10">
                   <div>
-                      <h2 className="text-3xl md:text-4xl font-extrabold text-blue-900 mb-3 tracking-tight">Double Room (เตียงคู่)</h2>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h2 className="text-3xl md:text-4xl font-extrabold text-blue-900 tracking-tight">Double Room (เตียงคู่)</h2>
+                        {/* ✅ Badge แสดงจำนวนห้องว่าง Double Room */}
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${
+                            availability["Double Room"] > 0 ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"
+                        }`}>
+                            {availability["Double Room"] > 0 ? `ว่าง ${availability["Double Room"]} ห้อง` : "ห้องเต็ม!"}
+                        </span>
+                      </div>
+                      
                       <p className="text-4xl md:text-5xl font-black text-blue-600 flex items-baseline gap-2">
                         500฿ <span className="text-xl text-gray-600 font-medium">/คืน</span>
                       </p>
@@ -310,12 +353,19 @@ const HomePage = ({ user }) => {
                   
                   <button 
                     onClick={() => handleReserve('Double Room', 500)}
-                    className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-10 py-4 rounded-full font-bold text-lg shadow-lg shadow-blue-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                    disabled={availability["Double Room"] <= 0} // ปิดปุ่มถ้าห้องเต็ม
+                    className={`px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center gap-2 whitespace-nowrap ${
+                        availability["Double Room"] > 0 
+                        ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-blue-500/30 hover:-translate-y-1 active:scale-95" 
+                        : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    }`}
                   >
-                    <span>จองเลย</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
+                    <span>{availability["Double Room"] > 0 ? "จองเลย" : "ห้องเต็ม"}</span>
+                    {availability["Double Room"] > 0 && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    )}
                   </button>
               </div>
 
@@ -351,14 +401,22 @@ const HomePage = ({ user }) => {
               </div>
             </div>
 
-            {/* ✅ แก้ไข: เพิ่ม mt-12 (ห่างเยอะมากๆ) เพื่อดันลงมาอยู่ใต้รูปภาพไม่ให้ทับแน่นอน */}
             <div className="mt-20 bg-gradient-to-br from-green-50/80 to-green-100/50 backdrop-blur-lg rounded-[2.5rem] p-8 md:p-10 shadow-lg border border-green-200/60 relative overflow-hidden">
               {/* Decorative blurred circle */}
               <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-300/30 rounded-full blur-3xl pointer-events-none"></div>
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 relative z-10">
                   <div>
-                      <h2 className="text-3xl md:text-4xl font-extrabold text-green-900 mb-3 tracking-tight">Single Room (เตียงเดี่ยว)</h2>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h2 className="text-3xl md:text-4xl font-extrabold text-green-900 tracking-tight">Single Room (เตียงเดี่ยว)</h2>
+                        {/* ✅ Badge แสดงจำนวนห้องว่าง Single Room */}
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${
+                            availability["Single Room"] > 0 ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"
+                        }`}>
+                            {availability["Single Room"] > 0 ? `ว่าง ${availability["Single Room"]} ห้อง` : "ห้องเต็ม!"}
+                        </span>
+                      </div>
+                      
                       <p className="text-4xl md:text-5xl font-black text-green-600 flex items-baseline gap-2">
                         450฿ <span className="text-xl text-gray-600 font-medium">/คืน</span>
                       </p>
@@ -366,12 +424,19 @@ const HomePage = ({ user }) => {
                   
                   <button 
                     onClick={() => handleReserve('Single Room', 450)}
-                    className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-10 py-4 rounded-full font-bold text-lg shadow-lg shadow-green-500/30 transition-all hover:-translate-y-1 active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                    disabled={availability["Single Room"] <= 0} // ปิดปุ่มถ้าห้องเต็ม
+                    className={`px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center gap-2 whitespace-nowrap ${
+                        availability["Single Room"] > 0 
+                        ? "bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-green-500/30 hover:-translate-y-1 active:scale-95" 
+                        : "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    }`}
                   >
-                    <span>จองเลย</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
+                    <span>{availability["Single Room"] > 0 ? "จองเลย" : "ห้องเต็ม"}</span>
+                    {availability["Single Room"] > 0 && (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    )}
                   </button>
               </div>
 

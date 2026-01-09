@@ -126,6 +126,37 @@ app.put('/update-user', upload.single('profile_image'), (req, res) => {
     });
 });
 
+// ✅ API ใหม่: เช็คจำนวนห้องว่างสำหรับแสดงโชว์หน้าเว็บ (Focus ที่วันปัจจุบัน)
+app.get('/room-availability', (req, res) => {
+    const { room_name } = req.query;
+    
+    // ใช้วันที่ปัจจุบันในการเช็ค
+    const today = new Date().toISOString().split('T')[0];
+
+    // นับจำนวนคนที่จองห้องนี้ และเข้าพักในช่วงเวลานี้ (Booked Count)
+    const sql = `
+        SELECT COUNT(*) AS count 
+        FROM bookings 
+        WHERE room_name = ? 
+        AND status != 'cancelled'
+        AND (check_in_date <= ? AND check_out_date > ?)
+    `;
+
+    db.query(sql, [room_name, today, today], (err, results) => {
+        if (err) return res.status(500).json(err);
+        
+        const bookedCount = results[0].count;
+        const maxRooms = 15; // จำนวนห้องทั้งหมดต่อวัน
+        const available = maxRooms - bookedCount;
+
+        res.json({ 
+            room: room_name, 
+            booked: bookedCount, 
+            available: available < 0 ? 0 : available // ป้องกันเลขติดลบ
+        });
+    });
+});
+
 // --- Booking API ---
 
 app.get('/bookings/occupied', (req, res) => {
@@ -135,7 +166,7 @@ app.get('/bookings/occupied', (req, res) => {
     });
 });
 
-// ✅ ส่วน C: จองห้องพัก + กันจองซ้ำ + จัดการวันที่
+// ✅ ส่วน C (แก้ไข): จองห้องพัก + จำกัดห้องวันละ 15 ห้อง
 app.post('/reserve', upload.single('slip'), (req, res) => {
     const { user_id, room_name, price, check_in_date, check_out_date, payment_method } = req.body;
     const payment_slip = req.file ? req.file.filename : null;
@@ -145,15 +176,24 @@ app.post('/reserve', upload.single('slip'), (req, res) => {
     const checkOut = new Date(check_out_date).toISOString().split('T')[0];
 
     // 1. เช็คห้องว่าง (Overlap Check)
+    // ดึงรายการจองทั้งหมดที่ทับซ้อนกับช่วงเวลานี้
     const checkSql = "SELECT * FROM bookings WHERE room_name = ? AND status NOT IN ('cancelled', 'rejected') AND (check_in_date < ? AND check_out_date > ?)";
     
     db.query(checkSql, [room_name, checkOut, checkIn], (err, results) => {
         if (err) return res.status(500).json(err);
         
-        // ถ้ามีรายการจองที่ทับซ้อนกัน
-        if (results.length > 0) return res.status(400).json({ success: false, message: 'Room Occupied (ห้องไม่ว่างในช่วงเวลานี้)' });
+        // --- แก้ไขตรงนี้: กำหนด LIMIT 15 ห้อง ---
+        const MAX_ROOMS = 15; 
         
-        // 2. ถ้าว่าง ให้บันทึก
+        // ถ้านับจำนวนการจองในช่วงเวลานี้ได้มากกว่าหรือเท่ากับ 15 ให้แจ้งเตือนว่าเต็ม
+        if (results.length >= MAX_ROOMS) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `ขออภัย ห้อง ${room_name} ในช่วงวันที่เลือก เต็มแล้ว (ครบ ${MAX_ROOMS} ห้อง)` 
+            });
+        }
+        
+        // 2. ถ้ายังไม่ครบ 15 ให้บันทึก
         const sql = "INSERT INTO bookings (user_id, room_name, price, check_in_date, check_out_date, status, payment_method, payment_slip, created_at, booking_date) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, DATE_ADD(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 7 HOUR))";
         db.query(sql, [user_id, room_name, price, checkIn, checkOut, payment_method, payment_slip], (err) => {
             if (err) return res.status(500).json(err);
