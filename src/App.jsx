@@ -76,7 +76,7 @@ const AppLayout = ({ children, user, onLogout }) => {
       <nav className="hidden md:flex bg-white shadow-sm px-8 py-4 justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
         <img 
-                src="/images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
+                src="images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
                 alt="Logo" 
                 className="h-12 w-auto object-contain transition-transform group-hover:scale-110" 
               />
