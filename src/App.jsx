@@ -75,7 +75,11 @@ const AppLayout = ({ children, user, onLogout }) => {
     <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
       <nav className="hidden md:flex bg-white shadow-sm px-8 py-4 justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
-           <div className="bg-blue-600 p-2 rounded-lg"><Home className="text-white w-6 h-6" /></div>
+        <img 
+                src="/images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
+                alt="Logo" 
+                className="h-12 w-auto object-contain transition-transform group-hover:scale-110" 
+              />
            <span className="text-xl font-bold text-gray-800 tracking-tight">RCBAT HOTEL</span>
         </div>
         <div className="flex items-center gap-6">
