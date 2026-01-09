@@ -16,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors({
     origin: [
         "http://localhost:5173", 
-        "https://hotel-booking-web-eight.vercel.app" //
+        "https://hotel-booking-web-eight.vercel.app"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
@@ -43,7 +43,8 @@ const db = mysql.createPool({
     database: 'test',
     ssl: {
         minVersion: 'TLSv1.2',
-        rejectUnauthorized: true
+        // 🚩 แก้ไขตรงนี้: เปลี่ยน true เป็น false เพื่อป้องกัน Server ดับตอนเชื่อมต่อ Database
+        rejectUnauthorized: false 
     }
 });
 
@@ -71,6 +72,103 @@ app.post('/admin-login', (req, res) => {
         }
     });
 });
+
+// ==========================================
+// 📌 [NEW - EDITED] ส่วนจัดการ Admin Management (แก้ไขให้ตรงกับ DB เดิม)
+// ==========================================
+
+// --- 1. จัดการ Users (Admin Only) ---
+app.get('/users', (req, res) => {
+    // แก้ไข: เลือก column ให้ตรงกับตาราง users (id, name, email, phone, role)
+    db.query('SELECT id, name, email, phone, role FROM users', (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.delete('/users/:id', (req, res) => {
+    const { id } = req.params;
+    // ป้องกันการลบ Super Admin (id 1)
+    if (id == 1) return res.status(403).json({ message: "Cannot delete Super Admin" });
+
+    db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'User deleted' });
+    });
+});
+
+app.put('/users/:id/role', (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+    db.query('UPDATE users SET role = ? WHERE id = ?', [role, id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Role updated' });
+    });
+});
+
+// --- 2. จัดการ Rooms (Admin Only) ---
+// แก้ไข: ให้ใช้ column name, price, image_url ตาม Database เดิม
+
+app.get('/rooms', (req, res) => {
+    db.query('SELECT * FROM rooms', (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.post('/rooms', upload.single('room_image'), (req, res) => {
+    // รับค่า room_name จากหน้าบ้าน แต่จะบันทึกลงช่อง name ใน DB
+    const { room_name, price } = req.body;
+    // หมายเหตุ: description และ guest_limit ถูกตัดออกเพราะ DB ไม่มีช่องเก็บ
+    
+    const image_url = req.file ? req.file.filename : ''; // บันทึกชื่อไฟล์ลง image_url
+
+    // ✅ SQL แก้ให้ตรงกับตาราง rooms (name, price, image_url)
+    const sql = 'INSERT INTO rooms (name, price, image_url) VALUES (?, ?, ?)';
+    
+    db.query(sql, [room_name, price, image_url], (err, result) => {
+        if (err) {
+            console.error("DB Insert Error:", err);
+            return res.status(500).json(err);
+        }
+        res.json({ message: 'Room added successfully' });
+    });
+});
+
+app.put('/rooms/:id', upload.single('room_image'), (req, res) => {
+    const { id } = req.params;
+    const { room_name, price } = req.body;
+    
+    // ✅ SQL แก้ให้ตรงกับตาราง rooms
+    let sql = 'UPDATE rooms SET name=?, price=?';
+    let params = [room_name, price];
+
+    if (req.file) {
+        sql += ', image_url=?'; // อัปเดตชื่อไฟล์รูป
+        params.push(req.file.filename);
+    }
+    
+    sql += ' WHERE id=?';
+    params.push(id);
+
+    db.query(sql, params, (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Room updated' });
+    });
+});
+
+app.delete('/rooms/:id', (req, res) => {
+    const { id } = req.params;
+    db.query('DELETE FROM rooms WHERE id = ?', [id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Room deleted' });
+    });
+});
+
+// ==========================================
+// 📌 [END NEW] จบส่วนจัดการ Admin Management
+// ==========================================
+
 
 // ✅ ส่วน B: สมัครสมาชิก (ใช้ phone)
 app.post('/register', (req, res) => {
@@ -126,29 +224,39 @@ app.put('/update-user', upload.single('profile_image'), (req, res) => {
     });
 });
 
-// ✅ API ใหม่: เช็คจำนวนห้องว่างสำหรับแสดงโชว์หน้าเว็บ (Focus ที่วันปัจจุบัน)
+// ✅ API (แก้ไข): เช็คจำนวนห้องว่าง พร้อม Log ดูค่าใน Console
 app.get('/room-availability', (req, res) => {
     const { room_name } = req.query;
     
-    // ✅ แก้ไข: บังคับใช้เวลาประเทศไทย (Asia/Bangkok) รูปแบบ YYYY-MM-DD
+    // 1. ระบุเวลาปัจจุบันแบบเจาะจงโซนไทย (YYYY-MM-DD)
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
-    // นับทุกสถานะที่ไม่ใช่ cancelled (รวม pending, confirmed, upcoming, checked_in)
-    // เพื่อกันที่ไว้เลย ไม่ให้คนอื่นจองซ้อนแม้จะยังไม่อนุมัติ
+    console.log(`----- Checking Availability -----`);
+    console.log(`Checking Room: ${room_name}`);
+    console.log(`For Date: ${today}`);
+
+    // 2. SQL Query แบบชัวร์ที่สุด (ใช้ DATE() ครอบเพื่อตัดเวลาทิ้ง เผื่อใน DB มีเวลาติดมา)
     const sql = `
         SELECT COUNT(*) AS count 
         FROM bookings 
         WHERE room_name = ? 
         AND status != 'cancelled'
-        AND (check_in_date <= ? AND check_out_date > ?)
+        AND (DATE(check_in_date) <= ? AND DATE(check_out_date) > ?)
     `;
 
     db.query(sql, [room_name, today, today], (err, results) => {
-        if (err) return res.status(500).json(err);
+        if (err) {
+            console.error("SQL Error:", err);
+            return res.status(500).json(err);
+        }
         
         const bookedCount = results[0].count;
         const maxRooms = 15; 
         const available = maxRooms - bookedCount;
+
+        console.log(`Found Booked: ${bookedCount} rooms`);
+        console.log(`Available Left: ${available}`);
+        console.log(`---------------------------------`);
 
         res.json({ 
             room: room_name, 

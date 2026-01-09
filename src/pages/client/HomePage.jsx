@@ -7,7 +7,7 @@ import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.min.css";
 import "flatpickr/dist/themes/material_blue.css";
 
-// ไอคอนติ๊กถูกสำหรับรายการสิ่งอำนวยความสะดวก
+// ไอคอนติ๊กถูก
 const CheckIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -19,29 +19,38 @@ const CheckIconGreen = () => (
     </svg>
   );
 
+// ฟังก์ชันช่วย: แตกช่วงวันที่
+const getDatesInRange = (startDate, endDate) => {
+    const dates = [];
+    let currentDate = new Date(startDate);
+    const lastDate = new Date(endDate);
+    while (currentDate < lastDate) {
+        dates.push(new Date(currentDate).toISOString().split('T')[0]);
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+    return dates;
+};
+
 const HomePage = ({ user }) => {
   const navigate = useNavigate();
 
-  // ✅ 1. เพิ่ม State เก็บจำนวนห้องว่าง (ค่าเริ่มต้น 15)
   const [availability, setAvailability] = useState({
     "Double Room": 15, 
     "Single Room": 15  
   });
 
-  // ✅ 2. เพิ่ม useEffect ดึงข้อมูลห้องว่างจาก Server
+  // Fetch ห้องว่าง
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        // เช็คห้อง Double Room
-        const resDouble = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Double Room`);
+        const resDouble = await fetch(`http://localhost:3000/room-availability?room_name=Double Room`);
         const dataDouble = await resDouble.json();
         
-        // เช็คห้อง Single Room
-        const resSingle = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Single Room`);
+        const resSingle = await fetch(`http://localhost:3000/room-availability?room_name=Single Room`);
         const dataSingle = await resSingle.json();
 
         setAvailability({
-          "Double Room": dataDouble.available, // รับค่าที่คำนวณมาแล้ว (15 - booked)
+          "Double Room": dataDouble.available, 
           "Single Room": dataSingle.available
         });
       } catch (error) {
@@ -50,26 +59,18 @@ const HomePage = ({ user }) => {
     };
 
     fetchAvailability();
-    
-    // รีเฟรชข้อมูลทุก 10 วินาที เพื่อให้ Realtime
     const interval = setInterval(fetchAvailability, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ แก้ไข: เช็ค Admin/Manager แล้วดีดไปหน้า Dashboard แทนการลบ User ทิ้ง
+  // เช็ค Role
   useEffect(() => {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
-        
-        if (userData.role === 'admin') {
-          navigate('/admin');   // พาไปหน้า Admin
-        } else if (userData.role === 'manager') {
-          navigate('/manager'); // พาไปหน้า Manager
-        }
-        // ถ้าเป็นลูกค้าปกติ ก็ให้อยู่หน้านี้ต่อ
-        
+        if (userData.role === 'admin') navigate('/admin');   
+        else if (userData.role === 'manager') navigate('/manager'); 
       } catch (e) {
         console.error("Error parsing user data", e);
       }
@@ -77,42 +78,45 @@ const HomePage = ({ user }) => {
   }, [navigate]);
 
   const handleReserve = async (roomType, pricePerNight) => {
-    // --- 1. เช็กล็อกอินก่อน ---
+    // --- 1. เช็กล็อกอิน ---
     if (!user) {
       Swal.fire({
         icon: 'warning',
         title: 'กรุณาเข้าสู่ระบบ',
         text: 'คุณต้องล็อกอินหรือสมัครสมาชิกก่อนทำการจองห้องพัก',
         showCancelButton: true,
-        confirmButtonText: 'เข้าสู่ระบบ / สมัครสมาชิก',
-        cancelButtonText: 'ยกเลิก',
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33'
+        confirmButtonText: 'เข้าสู่ระบบ',
+        cancelButtonText: 'ยกเลิก'
       }).then((result) => {
-        if (result.isConfirmed) {
-          navigate('/login');
-        }
+        if (result.isConfirmed) navigate('/login');
       });
       return;
     }
 
     const userId = user.id || user.user_id || user.ID;
     if (!userId) {
-        Swal.fire('ข้อมูลผิดพลาด', 'ไม่พบ User ID (กรุณา Login ใหม่อีกครั้ง)', 'error');
+        Swal.fire('ข้อมูลผิดพลาด', 'ไม่พบ User ID', 'error');
         return;
     }
 
-    // --- 2. ดึงข้อมูล "วันที่ไม่ว่าง" ---
-    let occupiedDates = [];
+    // --- 2. ดึงวันที่เต็ม ---
+    let fullDates = [];
     try {
-        const response = await fetch(`https://hotel-booking-web-kfks.onrender.com/bookings/occupied?room_name=${roomType}`);
-        const data = await response.json();
+        const response = await fetch(`http://localhost:3000/bookings/occupied?room_name=${roomType}`);
+        const bookings = await response.json();
         
-        if (Array.isArray(data)) {
-            occupiedDates = data.map(booking => ({
-                from: booking.check_in_date,
-                to: booking.check_out_date
-            }));
+        if (Array.isArray(bookings)) {
+            const MAX_ROOMS = 15;
+            const dailyCounts = {};
+
+            bookings.forEach(booking => {
+                const range = getDatesInRange(booking.check_in_date, booking.check_out_date);
+                range.forEach(dateStr => {
+                    dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
+                });
+            });
+
+            fullDates = Object.keys(dailyCounts).filter(date => dailyCounts[date] >= MAX_ROOMS);
         }
     } catch (err) {
         console.error("Error fetching occupied dates:", err);
@@ -124,31 +128,30 @@ const HomePage = ({ user }) => {
       html: `
         <div class="flex flex-col gap-4 text-left">
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คอิน (Check-in)</label>
+                <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คอิน</label>
                 <input type="text" id="swal-checkin" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" placeholder="เลือกวันเช็คอิน...">
             </div>
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คเอาท์ (Check-out)</label>
+                <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คเอาท์</label>
                 <input type="text" id="swal-checkout" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" placeholder="เลือกวันเช็คเอาท์..." disabled>
             </div>
-            <div class="text-xs text-red-500 mt-1">* วันที่เป็นสีเทา คือมีผู้จองแล้ว</div>
+            <div class="text-xs text-red-500 mt-1">* วันที่เป็นสีเทา คือห้องเต็ม</div>
         </div>
       `,
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'ถัดไป',
       cancelButtonText: 'ยกเลิก',
-      confirmButtonColor: '#3085d6',
       
       didOpen: () => {
         const checkInInput = document.getElementById('swal-checkin');
         const checkOutInput = document.getElementById('swal-checkout');
 
-        const fpCheckIn = flatpickr(checkInInput, {
+        flatpickr(checkInInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: occupiedDates,
-            onChange: (selectedDates, dateStr) => {
+            disable: fullDates,
+            onChange: (selectedDates) => {
                 checkOutInput.disabled = false;
                 if (checkOutInput._flatpickr) {
                      checkOutInput._flatpickr.set('minDate', new Date(selectedDates[0].getTime() + 86400000));
@@ -157,10 +160,10 @@ const HomePage = ({ user }) => {
             }
         });
 
-        const fpCheckOut = flatpickr(checkOutInput, {
+        flatpickr(checkOutInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: occupiedDates,
+            disable: fullDates,
         });
       },
 
@@ -185,7 +188,7 @@ const HomePage = ({ user }) => {
 
     if (!bookingData) return;
 
-    // --- 4. Popup ชำระเงิน ---
+    // --- 4. Popup ชำระเงิน (พร้อม QR Code) ---
     const { value: paymentData } = await Swal.fire({
         title: 'ชำระเงิน / Payment',
         html: `
@@ -203,10 +206,16 @@ const HomePage = ({ user }) => {
                     </select>
                 </div>
                 
-                <div class="bg-gray-100 p-3 rounded-lg border border-gray-200">
+                <div id="info-bank" class="bg-gray-100 p-3 rounded-lg border border-gray-200">
                     <p class="font-bold text-blue-800">ธนาคารกสิกรไทย (KBANK)</p>
                     <p>เลขบัญชี: <strong>123-4-56789-0</strong></p>
                     <p>ชื่อบัญชี: บจก. RCBAT Hotel</p>
+                </div>
+
+                <div id="info-qr" class="bg-gray-100 p-3 rounded-lg border border-gray-200 text-center" style="display: none;">
+                    <p class="font-bold text-blue-800 mb-2">สแกนเพื่อชำระเงิน</p>
+                    <img src="/images/qrcode.jpg" alt="Payment QR Code" class="w-48 h-48 mx-auto object-contain bg-white p-2 rounded border" />
+                    <p class="text-xs text-gray-500 mt-1">RCBAT Hotel PromptPay</p>
                 </div>
 
                 <div>
@@ -219,6 +228,23 @@ const HomePage = ({ user }) => {
         showCancelButton: true,
         confirmButtonText: 'ยืนยันชำระเงิน',
         cancelButtonText: 'ยกเลิก',
+        
+        didOpen: () => {
+            const select = document.getElementById('swal-payment-method');
+            const bankInfo = document.getElementById('info-bank');
+            const qrInfo = document.getElementById('info-qr');
+
+            select.addEventListener('change', (e) => {
+                if (e.target.value === 'qrcode') {
+                    bankInfo.style.display = 'none';
+                    qrInfo.style.display = 'block';
+                } else {
+                    bankInfo.style.display = 'block';
+                    qrInfo.style.display = 'none';
+                }
+            });
+        },
+
         preConfirm: () => {
             const method = document.getElementById('swal-payment-method').value;
             const file = document.getElementById('swal-payment-slip').files[0];
@@ -232,14 +258,14 @@ const HomePage = ({ user }) => {
 
     if (!paymentData) return; 
 
-    // --- 5. ยืนยันข้อมูล ---
+    // --- 5. ยืนยันข้อมูล (แก้ไขให้แสดงชื่อก่อนอีเมล) ---
     const result = await Swal.fire({
       title: '<h3 class="text-xl font-bold text-blue-700">ยืนยันรายละเอียด</h3>',
       html: `
         <div class="bg-blue-50 p-4 rounded-lg text-sm text-gray-700 space-y-2 text-left">
           <div class="flex justify-between border-b pb-2">
             <span class="font-bold">ผู้เข้าพัก:</span>
-            <span>${user.email || user.username || user.name || 'ลูกค้า'}</span>
+            <span class="text-blue-900 font-medium">${user.name || user.firstname || user.username || user.email}</span>
           </div>
           <div class="flex justify-between">
             <span class="font-bold">ประเภทห้อง:</span>
@@ -281,7 +307,7 @@ const HomePage = ({ user }) => {
         formData.append('payment_method', paymentData.method);
         formData.append('slip', paymentData.file);
 
-        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/reserve', {
+        const response = await fetch('http://localhost:3000/reserve', {
           method: 'POST',
           body: formData
         });
@@ -331,14 +357,12 @@ const HomePage = ({ user }) => {
             </div>
 
             <div className="bg-gradient-to-br from-blue-100/80 to-blue-200/50 backdrop-blur-lg rounded-[2.5rem] p-8 md:p-10 shadow-lg border border-blue-200/60 relative overflow-hidden">
-              {/* Decorative blurred circle */}
               <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-300/30 rounded-full blur-3xl pointer-events-none"></div>
               
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 relative z-10">
                   <div>
                       <div className="flex items-center gap-3 mb-3">
                         <h2 className="text-3xl md:text-4xl font-extrabold text-blue-900 tracking-tight">Double Room (เตียงคู่)</h2>
-                        {/* ✅ Badge แสดงจำนวนห้องว่าง Double Room */}
                         <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${
                             availability["Double Room"] > 0 ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"
                         }`}>
@@ -353,7 +377,7 @@ const HomePage = ({ user }) => {
                   
                   <button 
                     onClick={() => handleReserve('Double Room', 500)}
-                    disabled={availability["Double Room"] <= 0} // ปิดปุ่มถ้าห้องเต็ม
+                    disabled={availability["Double Room"] <= 0} 
                     className={`px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center gap-2 whitespace-nowrap ${
                         availability["Double Room"] > 0 
                         ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-blue-500/30 hover:-translate-y-1 active:scale-95" 
@@ -381,12 +405,10 @@ const HomePage = ({ user }) => {
             </div>
         </div>
 
-        {/* ================= เส้นคั่น ================= */}
         <hr className="border-t border-blue-200 my-200 w-3/4 mx-auto opacity-50" />
 
         {/* ================= ห้องที่ 2: Single Room ================= */}
         <div className="mb-24 bg-white rounded-[3rem] p-6 shadow-xl shadow-green-100/50 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-            {/* ส่วนรูปภาพ */}
             <div className="grid grid-cols-3 gap-4 mb-8 h-[450px] md:h-[500px]">
               <div className="col-span-2 h-full rounded-3xl overflow-hidden shadow-md border-4 border-white">
                 <img src="images/8a011ebd-aecf-4d85-b0dd-0f761e983e46.jpg" alt="Single Room Main" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
@@ -402,14 +424,12 @@ const HomePage = ({ user }) => {
             </div>
 
             <div className="mt-20 bg-gradient-to-br from-green-50/80 to-green-100/50 backdrop-blur-lg rounded-[2.5rem] p-8 md:p-10 shadow-lg border border-green-200/60 relative overflow-hidden">
-              {/* Decorative blurred circle */}
               <div className="absolute -top-20 -right-20 w-64 h-64 bg-green-300/30 rounded-full blur-3xl pointer-events-none"></div>
 
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-6 relative z-10">
                   <div>
                       <div className="flex items-center gap-3 mb-3">
                         <h2 className="text-3xl md:text-4xl font-extrabold text-green-900 tracking-tight">Single Room (เตียงเดี่ยว)</h2>
-                        {/* ✅ Badge แสดงจำนวนห้องว่าง Single Room */}
                         <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${
                             availability["Single Room"] > 0 ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"
                         }`}>
@@ -424,7 +444,7 @@ const HomePage = ({ user }) => {
                   
                   <button 
                     onClick={() => handleReserve('Single Room', 450)}
-                    disabled={availability["Single Room"] <= 0} // ปิดปุ่มถ้าห้องเต็ม
+                    disabled={availability["Single Room"] <= 0}
                     className={`px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center gap-2 whitespace-nowrap ${
                         availability["Single Room"] > 0 
                         ? "bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-green-500/30 hover:-translate-y-1 active:scale-95" 

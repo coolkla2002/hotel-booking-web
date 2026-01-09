@@ -4,6 +4,7 @@ import { Home, FileText, UserCog, Phone, MapPin, LogOut, LogIn } from 'lucide-re
 import Swal from 'sweetalert2';
 
 // Import Pages
+import AdminManagement from './pages/admin/AdminManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -166,6 +167,8 @@ function App() {
               <AppLayout user={user} onLogout={handleLogout}><BookingHistory user={user} /></AppLayout>
             ) : <Navigate to="/login" />
         } />
+
+<Route path="/admin-management" element={<AdminManagement />} />
 
         <Route path="/profile" element={
             user ? (

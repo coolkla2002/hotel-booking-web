@@ -10,17 +10,23 @@ import html2canvas from 'html2canvas';
 const ManagerDashboard = () => {
     const [bookings, setBookings] = useState([]);
     const [year, setYear] = useState(new Date().getFullYear());
-    const navigate = useNavigate();
+    const [selectedMonth, setSelectedMonth] = useState('all'); 
     
-    const reportRef = useRef(null); // Reference สำหรับแคปภาพ
+    const navigate = useNavigate();
+    const reportRef = useRef(null); 
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
+    
+    const months = [
+        { value: '1', label: 'มกราคม' }, { value: '2', label: 'กุมภาพันธ์' }, { value: '3', label: 'มีนาคม' },
+        { value: '4', label: 'เมษายน' }, { value: '5', label: 'พฤษภาคม' }, { value: '6', label: 'มิถุนายน' },
+        { value: '7', label: 'กรกฎาคม' }, { value: '8', label: 'สิงหาคม' }, { value: '9', label: 'กันยายน' },
+        { value: '10', label: 'ตุลาคม' }, { value: '11', label: 'พฤศจิกายน' }, { value: '12', label: 'ธันวาคม' }
+    ];
 
-    // ✅ แก้ไขส่วนนี้: ปรับปรุง useEffect เพื่ออนุญาตให้ Admin และ Manager เข้าได้ทั้งคู่
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         
-        // 1. ถ้าไม่มีการล็อกอินเลย -> ไปหน้า Login
         if (!userStr) { 
             navigate('/admin-login'); 
             return; 
@@ -28,9 +34,6 @@ const ManagerDashboard = () => {
 
         try {
             const user = JSON.parse(userStr);
-            
-            // 2. เช็ค Role: อนุญาตให้ทั้ง 'manager' และ 'admin' เข้าได้
-            // แปลงเป็นตัวพิมพ์เล็กก่อนเช็ค เพื่อป้องกันปัญหา case sensitive
             const role = user.role ? user.role.toLowerCase() : '';
 
             if (role !== 'manager' && role !== 'admin') { 
@@ -40,22 +43,21 @@ const ManagerDashboard = () => {
                     text: 'ไม่มีสิทธิ์เข้าถึงหน้านี้ (Role ของคุณคือ: ' + user.role + ')',
                     timer: 3000
                 });
-                navigate('/admin'); // ถ้าไม่ใช่ทั้งคู่ ค่อยดีดไปหน้า Admin หลัก
+                navigate('/admin'); 
                 return;
             }
 
-            // ถ้าผ่านเงื่อนไข ให้ดึงข้อมูล
             fetchBookings();
 
         } catch (error) {
             console.error("Error parsing user data:", error);
-            localStorage.removeItem('user'); // ถ้าข้อมูลพัง ให้ลบออกแล้วไป Login ใหม่
+            localStorage.removeItem('user'); 
             navigate('/admin-login');
         }
     }, [navigate]);
 
     const fetchBookings = () => {
-        fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
+        fetch('http://localhost:3000/bookings')
             .then(res => res.json())
             .then(data => {
                 const validBookings = data.filter(b => b.status === 'approved' || b.status === 'upcoming' || b.status === 'completed');
@@ -69,15 +71,18 @@ const ManagerDashboard = () => {
         navigate('/admin-login');
     };
 
+    // ✅ แก้ไข: เพิ่มการนับจำนวนห้อง (count) ในแต่ละเดือน
     const getMonthlyData = () => {
         const data = Array.from({ length: 12 }, (_, i) => ({
             name: new Date(0, i).toLocaleDateString('th-TH', { month: 'short' }),
-            income: 0
+            income: 0,
+            count: 0 // เพิ่มตัวแปรนับจำนวน
         }));
         bookings.forEach(b => {
             const d = new Date(b.check_in_date);
             if (d.getFullYear() === parseInt(year)) {
                 data[d.getMonth()].income += Number(b.price);
+                data[d.getMonth()].count += 1; // นับเพิ่ม
             }
         });
         return data;
@@ -92,7 +97,6 @@ const ManagerDashboard = () => {
         return Object.keys(types).map(key => ({ name: key, value: types[key] }));
     };
 
-    // ฟังก์ชัน Export PDF (เหมือนเดิม)
     const exportPDF = () => {
         const input = reportRef.current;
 
@@ -117,6 +121,24 @@ const ManagerDashboard = () => {
         });
     };
 
+    const filteredBookings = bookings.filter(b => {
+        const date = new Date(b.check_in_date);
+        const isYearMatch = date.getFullYear() === parseInt(year);
+        const isMonthMatch = selectedMonth === 'all' 
+            ? true 
+            : (date.getMonth() + 1) === parseInt(selectedMonth);
+        
+        return isYearMatch && isMonthMatch;
+    });
+
+    const totalRevenue = filteredBookings.reduce((sum, b) => sum + Number(b.price), 0);
+    const totalBookingsCount = filteredBookings.length;
+    const averagePrice = totalBookingsCount > 0 ? totalRevenue / totalBookingsCount : 0;
+
+    const selectedMonthLabel = selectedMonth === 'all' 
+        ? '' 
+        : `เดือน${months.find(m => m.value === selectedMonth)?.label} `;
+
     return (
         <div className="min-h-screen bg-gray-100 font-sans">
             {/* Navbar */}
@@ -129,17 +151,29 @@ const ManagerDashboard = () => {
             </nav>
 
             <div className="p-8 max-w-7xl mx-auto space-y-8">
-                {/* Controls Area (ส่วนนี้จะไม่ถูกแคป) */}
+                {/* Controls Area */}
                 <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">จัดการรายงาน</h2>
                     </div>
                     <div className="flex gap-4">
-                        <select value={year} onChange={(e) => setYear(e.target.value)} className="border p-2 rounded-lg font-bold">
+                        <select 
+                            value={selectedMonth} 
+                            onChange={(e) => setSelectedMonth(e.target.value)} 
+                            className="border p-2 rounded-lg font-bold text-gray-700 focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="all">ดูภาพรวมทั้งปี</option>
+                            {months.map((m) => (
+                                <option key={m.value} value={m.value}>{m.label}</option>
+                            ))}
+                        </select>
+
+                        <select value={year} onChange={(e) => setYear(e.target.value)} className="border p-2 rounded-lg font-bold text-gray-700">
                             <option value="2024">2024</option>
                             <option value="2025">2025</option>
                             <option value="2026">2026</option>
                         </select>
+
                         <button onClick={exportPDF} className="bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow flex items-center gap-2">
                             Download PDF
                         </button>
@@ -149,43 +183,39 @@ const ManagerDashboard = () => {
                 {/* พื้นที่ที่จะถูกพิมพ์ลง PDF */}
                 <div ref={reportRef} className="bg-white p-8 rounded-xl shadow-lg border border-gray-200">
                     
-                    {/* หัวกระดาษสำหรับ PDF */}
                     <div className="text-center mb-8 border-b pb-4">
-                        <h1 className="text-3xl font-bold text-slate-800">รายงานสรุปผลประกอบการ ประจำปี {year}</h1>
+                        <h1 className="text-3xl font-bold text-slate-800">
+                            รายงานสรุปผลประกอบการ {selectedMonthLabel}ประจำปี {year}
+                        </h1>
                         <p className="text-gray-500">บริษัท โฮเทล จำกัด (มหาชน)</p>
                         <p className="text-sm text-gray-400 mt-2">วันที่ออกรายงาน: {new Date().toLocaleDateString('th-TH')}</p>
                     </div>
 
-                    {/* Stats Cards */}
                     <div className="grid grid-cols-3 gap-6 mb-8">
                         <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 text-center">
                             <p className="text-blue-600 font-bold mb-2">รายได้รวม</p>
                             <h3 className="text-3xl font-bold text-slate-800">
-                                {bookings.filter(b => new Date(b.check_in_date).getFullYear() === parseInt(year))
-                                        .reduce((sum, b) => sum + Number(b.price), 0).toLocaleString()} ฿
+                                {totalRevenue.toLocaleString()} ฿
                             </h3>
                         </div>
                         <div className="bg-orange-50 p-6 rounded-lg border border-orange-100 text-center">
                             <p className="text-orange-600 font-bold mb-2">จำนวนการจอง</p>
                             <h3 className="text-3xl font-bold text-slate-800">
-                                {bookings.filter(b => new Date(b.check_in_date).getFullYear() === parseInt(year)).length} ครั้ง
+                                {totalBookingsCount} ครั้ง
                             </h3>
                         </div>
                         <div className="bg-purple-50 p-6 rounded-lg border border-purple-100 text-center">
                             <p className="text-purple-600 font-bold mb-2">ราคาเฉลี่ย/ห้อง</p>
                             <h3 className="text-3xl font-bold text-slate-800">
-                                {(bookings.filter(b => new Date(b.check_in_date).getFullYear() === parseInt(year))
-                                        .reduce((sum, b) => sum + Number(b.price), 0) / 
-                                (bookings.filter(b => new Date(b.check_in_date).getFullYear() === parseInt(year)).length || 1)
-                                ).toFixed(0).toLocaleString()} ฿
+                                {averagePrice.toFixed(0).toLocaleString()} ฿
                             </h3>
                         </div>
                     </div>
 
                     {/* Charts */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                         <div>
-                            <h3 className="text-lg font-bold mb-4 text-center">แนวโน้มรายได้รายเดือน</h3>
+                            <h3 className="text-lg font-bold mb-4 text-center">แนวโน้มรายได้รายเดือน (ภาพรวมรายปี)</h3>
                             <div className="h-[300px] border rounded p-2">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={getMonthlyData()}>
@@ -224,28 +254,82 @@ const ManagerDashboard = () => {
                         </div>
                     </div>
 
+                    {/* ✅ ส่วนที่เพิ่ม: รายละเอียดการจองตามเดือนที่เลือก */}
+                    <div className="mt-8 mb-8">
+                        <h3 className="text-lg font-bold mb-2 bg-slate-100 p-2 border-l-4 border-blue-500">
+                            รายละเอียดผู้จอง {selectedMonthLabel} ({filteredBookings.length} รายการ)
+                        </h3>
+                        {filteredBookings.length === 0 ? (
+                            <p className="text-center text-gray-400 py-4 border rounded bg-gray-50">ไม่มีข้อมูลการจองในช่วงเวลานี้</p>
+                        ) : (
+                            <table className="w-full text-sm text-left text-gray-500 border">
+                                <thead className="text-xs text-white uppercase bg-slate-600">
+                                    <tr>
+                                        <th className="px-4 py-3">วันที่เช็คอิน</th>
+                                        <th className="px-4 py-3">ชื่อผู้จอง</th>
+                                        <th className="px-4 py-3">ประเภทห้อง</th>
+                                        <th className="px-4 py-3 text-right">ราคา</th>
+                                        <th className="px-4 py-3 text-center">สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredBookings.map((b, index) => (
+                                        <tr key={index} className="bg-white border-b hover:bg-gray-50">
+                                            <td className="px-4 py-2 font-medium">
+                                                {new Date(b.check_in_date).toLocaleDateString('th-TH')}
+                                            </td>
+                                            <td className="px-4 py-2 text-gray-900 font-semibold">
+                                                {/* ใช้ชื่อจาก DB ถ้าไม่มีใช้ user_id หรือ fallback */}
+                                                {b.fullname || b.name || `User ID: ${b.user_id}`}
+                                            </td>
+                                            <td className="px-4 py-2">{b.room_name}</td>
+                                            <td className="px-4 py-2 text-right">{Number(b.price).toLocaleString()}</td>
+                                            <td className="px-4 py-2 text-center">
+                                                <span className={`px-2 py-1 rounded-full text-xs text-white 
+                                                    ${b.status === 'approved' ? 'bg-green-500' : 
+                                                      b.status === 'completed' ? 'bg-blue-500' : 'bg-yellow-500'}`}>
+                                                    {b.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
                     {/* ตารางสรุปท้ายรายงาน */}
                     <div className="mt-8">
-                        <h3 className="text-lg font-bold mb-2">ตารางสรุปรายได้รายเดือน</h3>
+                        <h3 className="text-lg font-bold mb-2">ตารางสรุปรายได้ ({selectedMonth === 'all' ? 'รายเดือน' : 'เฉพาะเดือนที่เลือก'})</h3>
                         <table className="w-full text-sm text-left text-gray-500 border">
                             <thead className="text-xs text-white uppercase bg-slate-700">
                                 <tr>
                                     <th className="px-6 py-3">เดือน</th>
+                                    <th className="px-6 py-3 text-center">จำนวนที่จอง (ห้อง)</th>
                                     <th className="px-6 py-3 text-right">รายได้ (บาท)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {getMonthlyData().map((m, index) => (
-                                    <tr key={index} className="bg-white border-b">
+                                {/* Logic: ถ้าเลือก all ให้ map ทั้งหมด, ถ้าเลือกเดือน ให้ดึง array ตัวที่ index ตรงกันมาแสดง */}
+                                {(selectedMonth === 'all' 
+                                    ? getMonthlyData() 
+                                    : [getMonthlyData()[parseInt(selectedMonth) - 1]]
+                                ).map((m, index) => (
+                                    <tr key={index} className="bg-white border-b hover:bg-gray-50">
                                         <td className="px-6 py-2 font-medium text-gray-900">{m.name}</td>
+                                        <td className="px-6 py-2 text-center">{m.count}</td>
                                         <td className="px-6 py-2 text-right">{m.income.toLocaleString()}</td>
                                     </tr>
                                 ))}
+
+                                {/* แถวสรุปยอดรวม (ใช้ filteredBookings ที่คำนวณไว้แล้วด้านบน เพื่อให้ยอดตรงกับ Card และ Table) */}
                                 <tr className="bg-gray-100 font-bold">
                                     <td className="px-6 py-2 text-gray-900">รวมทั้งหมด</td>
+                                    <td className="px-6 py-2 text-center">
+                                        {filteredBookings.length}
+                                    </td>
                                     <td className="px-6 py-2 text-right">
-                                        {bookings.filter(b => new Date(b.check_in_date).getFullYear() === parseInt(year))
-                                        .reduce((sum, b) => sum + Number(b.price), 0).toLocaleString()}
+                                        {filteredBookings.reduce((sum, b) => sum + Number(b.price), 0).toLocaleString()}
                                     </td>
                                 </tr>
                             </tbody>

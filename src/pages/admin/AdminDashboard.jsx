@@ -7,13 +7,39 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const AdminDashboard = () => {
   const [bookings, setBookings] = useState([]);
-  const [rescheduleRequests, setRescheduleRequests] = useState([]); // State สำหรับเก็บคำขอ
+  const [rescheduleRequests, setRescheduleRequests] = useState([]); 
   const [activeTab, setActiveTab] = useState('dashboard');
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const navigate = useNavigate();
+
+  // ✅ CSS สำหรับการพิมพ์: ซ่อนทุกอย่าง ยกเว้น id="printable-area"
+  const printStyles = `
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printable-area, #printable-area * {
+        visibility: visible;
+      }
+      #printable-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        background: white;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  `;
 
   useEffect(() => {
     const userStr = localStorage.getItem('user');
@@ -27,19 +53,18 @@ const AdminDashboard = () => {
     }
 
     fetchBookings();
-    fetchRescheduleRequests(); //  เรียกฟังก์ชันดึงคำขอ
+    fetchRescheduleRequests(); 
   }, [navigate]);
 
   const fetchBookings = () => {
-    fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
+    fetch('http://localhost:3000/bookings')
       .then(res => res.json())
       .then(data => setBookings(data))
       .catch(err => console.error(err));
   };
 
-  //  ฟังก์ชันดึงคำขอจาก API
   const fetchRescheduleRequests = () => {
-    fetch('https://hotel-booking-web-kfks.onrender.com/admin/reschedule-requests')
+    fetch('http://localhost:3000/admin/reschedule-requests')
       .then(res => res.json())
       .then(data => setRescheduleRequests(data))
       .catch(err => console.error("Error fetching requests:", err));
@@ -60,7 +85,7 @@ const AdminDashboard = () => {
   const handleUpdateStatus = (id, newStatus) => {
     Swal.fire({ title: `ยืนยันเปลี่ยนสถานะเป็น "${newStatus}"?`, icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน' }).then((result) => {
         if (result.isConfirmed) {
-            fetch('https://hotel-booking-web-kfks.onrender.com/updateBookingStatus', {
+            fetch('http://localhost:3000/updateBookingStatus', {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, status: newStatus })
             }).then(res => res.json()).then(() => {
@@ -71,11 +96,8 @@ const AdminDashboard = () => {
     });
   };
 
-  // ✅ ฟังก์ชันใหม่: สำหรับกดดูรูปสลิป
   const handleViewSlip = (slipImage) => {
     if (!slipImage) return;
-    
-    // URL ของรูปภาพ (ต้องตรงกับโฟลเดอร์ที่ backend เปิดไว้)
     const imageUrl = `https://hotel-booking-web-kfks.onrender.com/uploads/${slipImage}`;
 
     Swal.fire({
@@ -84,12 +106,11 @@ const AdminDashboard = () => {
         imageAlt: 'Payment Slip',
         imageWidth: 400,
         showCloseButton: true,
-        showConfirmButton: false, // ไม่ต้องมีปุ่มยืนยัน แค่ปิดก็พอ
+        showConfirmButton: false, 
         background: '#f8f9fa'
     });
   };
 
-  //  ฟังก์ชันจัดการอนุมัติ/ปฏิเสธการเลื่อนวัน
   const handleRescheduleAction = (bookingId, action) => {
     const actionText = action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ';
     Swal.fire({
@@ -99,14 +120,14 @@ const AdminDashboard = () => {
         confirmButtonColor: action === 'approve' ? '#28a745' : '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('https://hotel-booking-web-kfks.onrender.com/admin/approve-reschedule', {
+            fetch('http://localhost:3000/admin/approve-reschedule', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ booking_id: bookingId, action })
             }).then(res => res.json()).then(data => {
                 if(data.success) {
                     Swal.fire('สำเร็จ', data.message, 'success');
-                    fetchRescheduleRequests(); // รีโหลดลิสต์คำขอ
-                    fetchBookings(); // รีโหลดลิสต์การจองหลัก
+                    fetchRescheduleRequests(); 
+                    fetchBookings(); 
                 } else {
                     Swal.fire('ผิดพลาด', data.message, 'error');
                 }
@@ -141,7 +162,10 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50">
+      {/* ✅ ใส่ Style สำหรับ Print ลงไปในหน้านี้ */}
+      <style>{printStyles}</style>
+
+      <nav className="bg-white px-6 py-4 flex justify-between items-center shadow-sm sticky top-0 z-50 no-print">
         <div className="flex items-center gap-3">
             <span className="bg-blue-600 text-white p-2 rounded-lg text-xl">📊</span>
             <div><h1 className="text-xl font-bold text-gray-800">Admin Panel</h1><p className="text-xs text-gray-500">ระบบจัดการหลังบ้าน</p></div>
@@ -150,12 +174,20 @@ const AdminDashboard = () => {
              <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📈 ภาพรวม</button>
              <button onClick={() => setActiveTab('bookings')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📝 จัดการการจอง</button>
              
-             {/* ปุ่มเมนูใหม่: คำขอเลื่อนวัน */}
              <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'requests' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-gray-600 hover:bg-gray-100'}`}>
                 📅 คำขอเลื่อนวัน {rescheduleRequests.length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{rescheduleRequests.length}</span>}
              </button>
 
              <button onClick={() => setActiveTab('report')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'report' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📄 รายงาน</button>
+             
+             {/* ✅ เพิ่มปุ่มกดไปหน้าจัดการข้อมูล (Admin Management) */}
+             <button 
+                onClick={() => navigate('/admin-management')} 
+                className="px-4 py-2 rounded-lg text-sm font-bold transition text-gray-600 hover:bg-gray-100 flex items-center gap-2"
+             >
+                ⚙️ จัดการข้อมูล
+             </button>
+
              <div className="h-6 w-px bg-gray-300 mx-2"></div>
              <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold">Logout</button>
         </div>
@@ -203,7 +235,6 @@ const AdminDashboard = () => {
                 <h2 className="text-xl font-bold mb-4 text-gray-700">รายการจองล่าสุด</h2>
                 <table className="w-full text-left border-collapse">
                     <thead>
-                        {/* ✅ เพิ่มคอลัมน์ หลักฐานโอน */}
                         <tr className="bg-gray-100 text-gray-600 border-b">
                             <th className="p-3">ID</th>
                             <th className="p-3">ลูกค้า</th>
@@ -224,7 +255,6 @@ const AdminDashboard = () => {
                                 <td className="p-3 text-sm">{new Date(item.check_in_date).toLocaleDateString('th-TH')} <br/> ถึง {new Date(item.check_out_date).toLocaleDateString('th-TH')}</td>
                                 <td className="p-3 font-bold">{Number(item.price).toLocaleString()}</td>
                                 
-                                {/* ✅ ส่วนแสดงปุ่มดูสลิป */}
                                 <td className="p-3">
                                     {item.slip_image ? (
                                         <button 
@@ -259,7 +289,7 @@ const AdminDashboard = () => {
             </div>
         )}
 
-        {/* TAB: Reschedule Requests (แสดงรายการคำขอ) */}
+        {/* TAB: Reschedule Requests */}
         {activeTab === 'requests' && (
             <div className="bg-white rounded-xl shadow-lg p-6">
                  <h2 className="text-xl font-bold mb-4 text-orange-700 flex items-center gap-2">
@@ -309,13 +339,15 @@ const AdminDashboard = () => {
         {/* TAB: Report */}
         {activeTab === 'report' && (
             <div className="space-y-6">
-                <div className="bg-white p-4 rounded-lg shadow flex gap-4 items-center print:hidden">
+                <div className="bg-white p-4 rounded-lg shadow flex gap-4 items-center no-print"> {/* ✅ เพิ่ม class no-print ตรงนี้ */}
                     <label className="font-bold">เลือกเดือน:</label>
                     <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="border p-2 rounded">{Array.from({length: 12}, (_, i) => (<option key={i} value={i}>{new Date(0, i).toLocaleDateString('th-TH', { month: 'long' })}</option>))}</select>
                     <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="border p-2 rounded">{[2024, 2025, 2026, 2027].map(y => (<option key={y} value={y}>{y}</option>))}</select>
                     <button onClick={() => window.print()} className="ml-auto bg-gray-700 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-gray-800">🖨️ พิมพ์รายงาน</button>
                 </div>
-                <div className="bg-white p-8 rounded-xl shadow-lg min-h-[500px]">
+                
+                {/* ✅ เพิ่ม id="printable-area" เพื่อให้ปริ้นท์เฉพาะส่วนนี้ */}
+                <div id="printable-area" className="bg-white p-8 rounded-xl shadow-lg min-h-[500px]">
                     <div className="text-center mb-6 border-b pb-4">
                         <h2 className="text-2xl font-bold text-gray-800">รายงานสรุปยอดประจำเดือน</h2>
                         <p className="text-gray-500">เดือน {new Date(0, selectedMonth).toLocaleDateString('th-TH', { month: 'long' })} พ.ศ. {parseInt(selectedYear) + 543}</p>
@@ -330,7 +362,6 @@ const AdminDashboard = () => {
         )}
 
       </div>
-      <style>{`@media print { .print\\:hidden { display: none !important; } body { background-color: white; } .shadow-lg { box-shadow: none !important; } }`}</style>
     </div>
   );
 };

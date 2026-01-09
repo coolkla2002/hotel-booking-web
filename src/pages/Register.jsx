@@ -48,7 +48,7 @@ const Register = () => {
     }
 
     try {
-        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/register', {
+        const response = await fetch('http://localhost:3000/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

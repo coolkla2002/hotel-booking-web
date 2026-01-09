@@ -18,7 +18,7 @@ const Admin = () => {
   }, []);
 
   const fetchBookings = () => {
-    fetch('http://127.0.0.1:3001/bookings')
+    fetch('http://localhost:3000/bookings')
       .then(res => res.json())
       .then(data => setBookings(data))
       .catch(err => console.error(err));
@@ -51,7 +51,7 @@ const Admin = () => {
         confirmButtonText: 'ยืนยัน'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('http://127.0.0.1:3001/updateBookingStatus', {
+            fetch('http://localhost:3000/updateBookingStatus', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, status: newStatus })
