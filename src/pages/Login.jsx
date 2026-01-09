@@ -12,7 +12,7 @@ const Login = ({ onLogin }) => {
     // --- ลบ Logic Admin เดิมออก (ย้ายไป AdminLogin) ---
 
     try {
-      const response = await fetch('http://localhost:3000/login', {
+      const response = await fetch('https://hotel-booking-web-kfks.onrender.com/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

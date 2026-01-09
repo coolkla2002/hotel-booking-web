@@ -36,8 +36,8 @@ const AdminManagement = () => {
     // --- 2. ฟังก์ชันดึงข้อมูล (API) ---
     const fetchRooms = async () => {
         try {
-            // เช็คว่า URL ถูกต้อง (ปกติคือ http://localhost:3000/rooms)
-            const res = await fetch('http://localhost:3000/rooms');
+            // เช็คว่า URL ถูกต้อง 
+            const res = await fetch('https://hotel-booking-web-kfks.onrender.com/rooms');
             if (!res.ok) throw new Error('Failed to fetch rooms');
             const data = await res.json();
             setRooms(data);
@@ -49,7 +49,7 @@ const AdminManagement = () => {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:3000/users');
+            const res = await fetch('https://hotel-booking-web-kfks.onrender.com/users');
             if (!res.ok) throw new Error('Failed to fetch users');
             const data = await res.json();
             setUsers(data);
@@ -64,11 +64,11 @@ const AdminManagement = () => {
         
         const formData = new FormData(e.target);
         
-        let url = 'http://localhost:3000/rooms'; // POST
+        let url = 'https://hotel-booking-web-kfks.onrender.com/rooms'; // POST
         let method = 'POST';
 
         if (isEditing && currentRoom) {
-            url = `http://localhost:3000/rooms/${currentRoom.id}`; // PUT
+            url = `https://hotel-booking-web-kfks.onrender.com/rooms/${currentRoom.id}`; // PUT
             method = 'PUT';
         }
 
@@ -106,7 +106,7 @@ const AdminManagement = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    await fetch(`http://localhost:3000/rooms/${id}`, { method: 'DELETE' });
+                    await fetch(`https://hotel-booking-web-kfks.onrender.com/rooms/${id}`, { method: 'DELETE' });
                     Swal.fire('ลบแล้ว!', 'ข้อมูลห้องถูกลบเรียบร้อย', 'success');
                     fetchRooms();
                 } catch (err) {
@@ -128,7 +128,7 @@ const AdminManagement = () => {
         }).then(async (result) => {
             if (result.isConfirmed) {
                 try {
-                    await fetch(`http://localhost:3000/users/${id}`, { method: 'DELETE' });
+                    await fetch(`https://hotel-booking-web-kfks.onrender.com/users/${id}`, { method: 'DELETE' });
                     Swal.fire('ลบแล้ว!', 'ผู้ใช้ถูกลบเรียบร้อย', 'success');
                     fetchUsers();
                 } catch (err) {
@@ -175,7 +175,7 @@ const AdminManagement = () => {
                                     <div className="h-48 bg-gray-200 relative">
                                         {/* แก้ไขการดึงรูปภาพให้ใช้ image_url ตาม DB */}
                                         <img 
-                                            src={room.image_url ? `http://localhost:3000/uploads/${room.image_url}` : 'https://via.placeholder.com/300?text=No+Image'}
+                                            src={room.image_url ? `https://hotel-booking-web-kfks.onrender.com/uploads/${room.image_url}` : 'https://via.placeholder.com/300?text=No+Image'}
                                             alt={room.name} 
                                             className="w-full h-full object-cover"
                                             onError={(e) => {e.target.src = 'https://via.placeholder.com/300?text=Error'}} 

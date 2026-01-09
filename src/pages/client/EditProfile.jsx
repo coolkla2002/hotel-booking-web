@@ -69,7 +69,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
             data.append('profile_image', imageFile);
         }
 
-        const response = await fetch('http://localhost:3000/update-user', {
+        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/update-user', {
             method: 'PUT',
             body: data
         });

@@ -57,7 +57,7 @@ const ManagerDashboard = () => {
     }, [navigate]);
 
     const fetchBookings = () => {
-        fetch('http://localhost:3000/bookings')
+        fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
             .then(res => res.json())
             .then(data => {
                 const validBookings = data.filter(b => b.status === 'approved' || b.status === 'upcoming' || b.status === 'completed');

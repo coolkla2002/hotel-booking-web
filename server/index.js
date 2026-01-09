@@ -13,10 +13,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// server/index.js
+
 app.use(cors({
     origin: [
-        "http://localhost:5173", 
-        "https://hotel-booking-web-eight.vercel.app"
+        "http://localhost:5173",             // เผื่อไว้ (Vite Default)
+        "http://localhost:3001",             // 1. ลิงก์ Localhost ของคุณ
+        "http://127.0.0.1:3001",             // 2. ลิงก์ IP Localhost
+        "https://hotel-booking-web-eight.vercel.app" // 3. ลิงก์ Vercel ของคุณ (สำคัญมาก!)
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true

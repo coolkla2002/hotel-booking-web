@@ -57,14 +57,14 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const fetchBookings = () => {
-    fetch('http://localhost:3000/bookings')
+    fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
       .then(res => res.json())
       .then(data => setBookings(data))
       .catch(err => console.error(err));
   };
 
   const fetchRescheduleRequests = () => {
-    fetch('http://localhost:3000/admin/reschedule-requests')
+    fetch('https://hotel-booking-web-kfks.onrender.com/admin/reschedule-requests')
       .then(res => res.json())
       .then(data => setRescheduleRequests(data))
       .catch(err => console.error("Error fetching requests:", err));
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
   const handleUpdateStatus = (id, newStatus) => {
     Swal.fire({ title: `ยืนยันเปลี่ยนสถานะเป็น "${newStatus}"?`, icon: 'question', showCancelButton: true, confirmButtonText: 'ยืนยัน' }).then((result) => {
         if (result.isConfirmed) {
-            fetch('http://localhost:3000/updateBookingStatus', {
+            fetch('https://hotel-booking-web-kfks.onrender.com/updateBookingStatus', {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, status: newStatus })
             }).then(res => res.json()).then(() => {
@@ -120,7 +120,7 @@ const AdminDashboard = () => {
         confirmButtonColor: action === 'approve' ? '#28a745' : '#d33'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('http://localhost:3000/admin/approve-reschedule', {
+            fetch('https://hotel-booking-web-kfks.onrender.com/admin/approve-reschedule', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ booking_id: bookingId, action })
             }).then(res => res.json()).then(data => {

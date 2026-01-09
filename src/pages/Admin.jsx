@@ -18,7 +18,7 @@ const Admin = () => {
   }, []);
 
   const fetchBookings = () => {
-    fetch('http://localhost:3000/bookings')
+    fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
       .then(res => res.json())
       .then(data => setBookings(data))
       .catch(err => console.error(err));
@@ -51,7 +51,7 @@ const Admin = () => {
         confirmButtonText: 'ยืนยัน'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('http://localhost:3000/updateBookingStatus', {
+            fetch('https://hotel-booking-web-kfks.onrender.com/updateBookingStatus', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, status: newStatus })

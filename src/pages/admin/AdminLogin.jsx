@@ -14,7 +14,7 @@ const AdminLogin = ({ onLogin }) => {
   const handleSubmit = async () => {
     try {
       // ยิงไปที่ /admin-login (API ใหม่สำหรับ Admin โดยเฉพาะ)
-      const response = await fetch('http://localhost:3000/admin-login', {
+      const response = await fetch('https://hotel-booking-web-kfks.onrender.com/admin-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email, password })

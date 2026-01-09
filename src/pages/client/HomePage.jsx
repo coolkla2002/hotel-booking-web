@@ -43,10 +43,10 @@ const HomePage = ({ user }) => {
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        const resDouble = await fetch(`http://localhost:3000/room-availability?room_name=Double Room`);
+        const resDouble = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Double Room`);
         const dataDouble = await resDouble.json();
         
-        const resSingle = await fetch(`http://localhost:3000/room-availability?room_name=Single Room`);
+        const resSingle = await fetch(`https://hotel-booking-web-kfks.onrender.com/room-availability?room_name=Single Room`);
         const dataSingle = await resSingle.json();
 
         setAvailability({
@@ -102,7 +102,7 @@ const HomePage = ({ user }) => {
     // --- 2. ดึงวันที่เต็ม ---
     let fullDates = [];
     try {
-        const response = await fetch(`http://localhost:3000/bookings/occupied?room_name=${roomType}`);
+        const response = await fetch(`https://hotel-booking-web-kfks.onrender.com/bookings/occupied?room_name=${roomType}`);
         const bookings = await response.json();
         
         if (Array.isArray(bookings)) {
@@ -307,7 +307,7 @@ const HomePage = ({ user }) => {
         formData.append('payment_method', paymentData.method);
         formData.append('slip', paymentData.file);
 
-        const response = await fetch('http://localhost:3000/reserve', {
+        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/reserve', {
           method: 'POST',
           body: formData
         });
