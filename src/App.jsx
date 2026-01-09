@@ -76,7 +76,7 @@ const AppLayout = ({ children, user, onLogout }) => {
       <nav className="hidden md:flex bg-white shadow-sm px-8 py-4 justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
            <div className="bg-blue-600 p-2 rounded-lg"><Home className="text-white w-6 h-6" /></div>
-           <span className="text-xl font-bold text-gray-800 tracking-tight">My Hotel</span>
+           <span className="text-xl font-bold text-gray-800 tracking-tight">RCBAT HOTEL</span>
         </div>
         <div className="flex items-center gap-6">
            <Link to="/" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>หน้าหลัก</Link>
