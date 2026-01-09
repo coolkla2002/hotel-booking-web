@@ -130,10 +130,11 @@ app.put('/update-user', upload.single('profile_image'), (req, res) => {
 app.get('/room-availability', (req, res) => {
     const { room_name } = req.query;
     
-    // ใช้วันที่ปัจจุบันในการเช็ค
-    const today = new Date().toISOString().split('T')[0];
+    // ✅ แก้ไข: บังคับใช้เวลาประเทศไทย (Asia/Bangkok) รูปแบบ YYYY-MM-DD
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
-    // นับจำนวนคนที่จองห้องนี้ และเข้าพักในช่วงเวลานี้ (Booked Count)
+    // นับทุกสถานะที่ไม่ใช่ cancelled (รวม pending, confirmed, upcoming, checked_in)
+    // เพื่อกันที่ไว้เลย ไม่ให้คนอื่นจองซ้อนแม้จะยังไม่อนุมัติ
     const sql = `
         SELECT COUNT(*) AS count 
         FROM bookings 
@@ -146,13 +147,13 @@ app.get('/room-availability', (req, res) => {
         if (err) return res.status(500).json(err);
         
         const bookedCount = results[0].count;
-        const maxRooms = 15; // จำนวนห้องทั้งหมดต่อวัน
+        const maxRooms = 15; 
         const available = maxRooms - bookedCount;
 
         res.json({ 
             room: room_name, 
             booked: bookedCount, 
-            available: available < 0 ? 0 : available // ป้องกันเลขติดลบ
+            available: available < 0 ? 0 : available
         });
     });
 });
