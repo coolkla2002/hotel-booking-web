@@ -1,9 +1,11 @@
+// client/src/pages/client/EditProfile.jsx
+
 import React, { useState, useEffect } from 'react';
-import { User, Settings, Camera, Pencil, Phone, Globe } from 'lucide-react';
+import { User, Settings, Camera, Pencil, Phone, Globe, Hash } from 'lucide-react'; // ✅ เพิ่ม Hash icon
 import Swal from 'sweetalert2';
+import API_URL from "/src/config";
 
 const EditProfile = ({ user, onUpdateUser }) => {
-  // 1. เพิ่มตัวดักจับ: ถ้าข้อมูล User ยังไม่มา ให้แสดง Loading (กันจอขาว)
   if (!user) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -18,31 +20,42 @@ const EditProfile = ({ user, onUpdateUser }) => {
     name: '',
     gender: '',
     birthdate: '',
-    phone: '', // ✅ ใช้ตัวแปร phone
+    phone: '', 
     email: '',
   });
 
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || '',
-        gender: user.gender || '',
-        birthdate: user.birthdate || '',
-        phone: user.phone || '', // ✅ ดึงข้อมูลจาก user.phone
-        email: user.email || '',
-      });
-
-      // ถ้ามีรูปในฐานข้อมูล ให้โชว์รูปนั้น
-      if (user?.profile_image) {
-        setPreview(`https://hotel-booking-web-kfks.onrender.com/uploads/${user.profile_image}`);
-      } else {
-        setPreview(null);
+  // แก้ไขในส่วน useEffect ของ EditProfile.jsx
+useEffect(() => {
+  if (user) {
+    // ฟังก์ชันช่วยเติมเลข 0 ถ้าข้อมูลที่มาไม่มีเลข 0 นำหน้า
+    const formatPhone = (phone) => {
+      if (!phone) return '';
+      let p = phone.toString();
+      // ถ้าเบอร์มี 9 หลัก และตัวแรกไม่ใช่ 0 ให้เติม 0 เข้าไปข้างหน้า
+      if (p.length === 9 && !p.startsWith('0')) {
+        return '0' + p;
       }
+      return p;
+    };
+
+    setFormData({
+      name: user.name || '',
+      gender: user.gender || '',
+      birthdate: user.birthdate || '',
+      phone: formatPhone(user.phone), // ✅ เรียกใช้ฟังก์ชันจัดการเลข 0
+      email: user.email || '',
+    });
+
+    if (user?.profile_image) {
+      setPreview(`${API_URL}/uploads/${user.profile_image}`);
+    } else {
+      setPreview(null);
     }
-  }, [user]);
+  }
+}, [user]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -63,13 +76,13 @@ const EditProfile = ({ user, onUpdateUser }) => {
         data.append('name', formData.name);
         data.append('gender', formData.gender);
         data.append('birthdate', formData.birthdate);
-        data.append('phone', formData.phone); // ✅ ส่งข้อมูล key 'phone'
+        data.append('phone', formData.phone);
         
         if (imageFile) {
             data.append('profile_image', imageFile);
         }
 
-        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/update-user', {
+        const response = await fetch(API_URL + '/update-user', {
             method: 'PUT',
             body: data
         });
@@ -77,7 +90,17 @@ const EditProfile = ({ user, onUpdateUser }) => {
         const result = await response.json();
 
         if (result.success) {
-            Swal.fire({
+            // ✅ 1. สร้าง Object ข้อมูลผู้ใช้ใหม่โดยรวมข้อมูลเดิมเข้ากับค่าใหม่ที่เพิ่งแก้
+            const updatedUser = {
+                ...user,            // ข้อมูลเดิม (เช่น role, email ที่ห้ามแก้)
+                ...formData,        // ข้อมูลใหม่จากฟอร์ม (name, gender, birthdate, phone)
+                profile_image: result.user?.profile_image || user.profile_image // รูปภาพใหม่ (ถ้ามี)
+            };
+
+            // ✅ 2. อัปเดต localStorage ทันที เพื่อให้ส่วนหัวเว็บ (Navbar) หรือหน้าอื่นๆ เปลี่ยนตาม
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+
+            await Swal.fire({
                 icon: 'success',
                 title: 'บันทึกข้อมูลเรียบร้อย!',
                 text: 'ระบบได้อัปเดตข้อมูลของคุณแล้ว',
@@ -85,17 +108,17 @@ const EditProfile = ({ user, onUpdateUser }) => {
                 showConfirmButton: false
             });
 
-            if (result.user) {
-                // เรียกฟังก์ชันนี้เพื่ออัปเดตข้อมูลไปยัง Navbar
-                onUpdateUser(result.user);
-
-                // อัปเดต Preview รูปในหน้านี้ทันที + ใส่ timestamp กัน Cache
-                if (result.user.profile_image) {
-                    setPreview(`https://hotel-booking-web-kfks.onrender.com/uploads/${result.user.profile_image}?t=${Date.now()}`);
-                }
-                
-                setImageFile(null);
+            // ✅ 3. ส่งข้อมูลที่อัปเดตแล้วกลับไปให้ Component แม่
+            if (onUpdateUser) {
+                onUpdateUser(updatedUser);
             }
+
+            // ✅ 4. จัดการเรื่องรูปภาพ Preview
+            if (result.user?.profile_image) {
+                setPreview(`${API_URL}/uploads/${result.user.profile_image}?t=${Date.now()}`);
+            }
+            setImageFile(null);
+
         } else {
             Swal.fire('เกิดข้อผิดพลาด', result.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
         }
@@ -122,23 +145,11 @@ const EditProfile = ({ user, onUpdateUser }) => {
         {/* ส่วนรูปโปรไฟล์ */}
         <div className="flex justify-center mb-10 relative">
           <div className="w-40 h-40 rounded-full bg-white border-4 border-blue-300 flex items-center justify-center overflow-hidden shadow-md relative group">
-            
             {preview ? (
-                <img 
-                    key={preview} 
-                    src={preview} 
-                    alt="Profile" 
-                    className="w-full h-full object-cover" 
-                    onError={handleImageError} 
-                />
+                <img key={preview} src={preview} alt="Profile" className="w-full h-full object-cover" onError={handleImageError} />
             ) : (
-                <img 
-                    src="https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg?w=740" 
-                    alt="Avatar" 
-                    className="w-full h-full object-cover" 
-                />
+                <img src="https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg?w=740" alt="Avatar" className="w-full h-full object-cover" />
             )}
-            
             <label className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                 <span className="text-white font-bold flex flex-col items-center">
                     <Camera size={24} />
@@ -146,7 +157,6 @@ const EditProfile = ({ user, onUpdateUser }) => {
                 </span>
                 <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
             </label>
-
             <div className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full text-white pointer-events-none">
                 <Camera size={20} />
             </div>
@@ -156,6 +166,22 @@ const EditProfile = ({ user, onUpdateUser }) => {
         {/* ฟอร์มแก้ไขข้อมูล */}
         <form className="space-y-6 max-w-2xl mx-auto">
           
+          {/* ✅ ส่วน User ID ที่เพิ่มเข้ามา */}
+          <div>
+            <label className="block text-blue-900 font-bold mb-2 text-2xl">
+                User ID <span className="text-sm text-red-500 font-normal ml-2">*ไม่สามารถแก้ไขได้</span>
+            </label>
+            <div className="relative">
+                <input 
+                  type="text" 
+                  value={user.id || user.user_id || ''} 
+                  disabled
+                  className="w-full p-4 pr-12 rounded-2xl bg-gray-300 border-2 border-gray-400 text-gray-600 text-xl font-bold shadow-inner cursor-not-allowed"
+                />
+                <Hash size={28} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none" />
+            </div>
+          </div>
+
           <div>
             <label className="block text-blue-900 font-bold mb-2 text-2xl">ชื่อ - นามสกุล</label>
             <div className="relative">
@@ -190,7 +216,6 @@ const EditProfile = ({ user, onUpdateUser }) => {
           <div>
             <label className="block text-blue-900 font-bold mb-2 text-2xl">เบอร์โทรศัพท์</label>
             <div className="relative">
-                {/* ✅ name="phone" และ value={formData.phone} */}
                 <input type="tel" name="phone" value={formData.phone} onChange={handleChange}
                   className="w-full p-4 pr-12 rounded-2xl bg-gray-100 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-800 text-xl font-bold shadow-inner underline decoration-2 underline-offset-4"
                 />

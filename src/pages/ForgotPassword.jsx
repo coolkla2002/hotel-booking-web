@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
 // Import ไอคอนเพิ่ม (Lock)
 import { Lock } from 'lucide-react';
+import API_URL from "/src/config";
+import myLogo from '../assets/logo.png'; // ✅ Import โลโก้มาใช้งาน
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -69,12 +71,12 @@ const ForgotPassword = () => {
 
       // ส่งข้อมูลไปบันทึกที่ Database
       try {
-        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/reset-password', {
+        const response = await fetch(`${API_URL}/reset-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                email: email, // ใช้อีเมลจาก Step 1
-                newPassword: newPassword 
+                email: email, 
+                password: newPassword // ✅ ส่งค่า password ให้ตรงกับที่ Server รอรับ
             })
         });
 
@@ -102,12 +104,14 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen bg-blue-200 flex flex-col relative overflow-hidden font-sans">
       
-      {/* --- Header --- */}
+      {/* --- Header แก้ไข: ใส่รูปภาพ Logo แทนวงกลมข้อความเดิม --- */}
       <div className="absolute top-4 left-4 flex items-center gap-2 z-10">
-         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-md">
-            <span className="text-blue-600 font-bold text-xs">LOGO</span>
-         </div>
-         <span className="text-white text-2xl font-bold drop-shadow-md">RCBAT HOTEL</span>
+          <img 
+            src={myLogo} 
+            alt="Logo" 
+            className="w-10 h-10 object-contain drop-shadow-md" 
+          />
+          <span className="text-white text-2xl font-bold drop-shadow-md">RCBAT HOTEL</span>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-4 relative z-0 mt-10">
@@ -122,12 +126,13 @@ const ForgotPassword = () => {
         {/* Card */}
         <div className="bg-blue-300/80 backdrop-blur-md p-8 pt-12 rounded-[40px] shadow-2xl w-full max-w-lg border-4 border-blue-200/50 relative">
             
-            <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 w-28 h-28 bg-white rounded-full border-4 border-blue-200 shadow-xl flex items-center justify-center">
-                 <div className="text-center">
-                    <div className="text-blue-600 text-4xl mb-1">
-                        {step === 3 ? '🔐' : '🏠'}
-                    </div>
-                 </div>
+            {/* วงกลมด้านบนแก้ไข: ใส่รูปภาพ Logo แทนไอคอน emoji เดิม */}
+            <div className="absolute -top-14 left-1/2 transform -translate-x-1/2 w-28 h-28 bg-white rounded-full border-4 border-blue-200 shadow-xl flex items-center justify-center overflow-hidden">
+                 <img 
+                    src={myLogo} 
+                    alt="Logo Big" 
+                    className="w-20 h-20 object-contain" 
+                 />
             </div>
 
             <form onSubmit={handleConfirm} className="mt-8 text-center space-y-6">
@@ -141,7 +146,7 @@ const ForgotPassword = () => {
                             placeholder="Email Address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full p-4 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-500 focus:outline-none text-gray-700 text-lg text-center shadow-inner"
+                            className="w-full p-4 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg text-center shadow-inner"
                         />
                         <p className="text-white text-sm mt-4">กรอกอีเมลเพื่อรับรหัส PIN</p>
                     </div>
@@ -156,7 +161,7 @@ const ForgotPassword = () => {
                             placeholder="______"
                             value={pinCode}
                             onChange={(e) => setPinCode(e.target.value)}
-                            className="w-full p-4 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-500 focus:outline-none text-gray-700 text-2xl tracking-[0.5em] text-center shadow-inner font-bold"
+                            className="w-full p-4 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-2xl tracking-[0.5em] text-center shadow-inner font-bold"
                             maxLength={6}
                         />
                         <p className="text-white text-sm mt-4">ตรวจสอบรหัสในอีเมล: {email}</p>
@@ -175,7 +180,7 @@ const ForgotPassword = () => {
                                     placeholder="New Password"
                                     value={newPassword}
                                     onChange={(e) => setNewPassword(e.target.value)}
-                                    className="w-full p-4 pl-12 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-500 focus:outline-none text-gray-700 text-lg shadow-inner"
+                                    className="w-full p-4 pl-12 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg shadow-inner"
                                 />
                             </div>
                         </div>
@@ -189,7 +194,7 @@ const ForgotPassword = () => {
                                     placeholder="Confirm Password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full p-4 pl-12 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-500 focus:outline-none text-gray-700 text-lg shadow-inner"
+                                    className="w-full p-4 pl-12 rounded-xl bg-gray-200/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg shadow-inner"
                                 />
                             </div>
                         </div>

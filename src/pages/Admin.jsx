@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import API_URL from "/src/config";
 
 const Admin = () => {
   const [bookings, setBookings] = useState([]);
@@ -18,7 +19,7 @@ const Admin = () => {
   }, []);
 
   const fetchBookings = () => {
-    fetch('https://hotel-booking-web-kfks.onrender.com/bookings')
+    fetch('${API_URL}/bookings')
       .then(res => res.json())
       .then(data => setBookings(data))
       .catch(err => console.error(err));
@@ -51,7 +52,7 @@ const Admin = () => {
         confirmButtonText: 'ยืนยัน'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch('https://hotel-booking-web-kfks.onrender.com/updateBookingStatus', {
+            fetch('${API_URL}/updateBookingStatus', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id, status: newStatus })

@@ -9,18 +9,15 @@ const multer = require('multer');
 
 const app = express();
 
-// --- ย้าย express.json มาไว้ตรงนี้ เพื่อให้ Server อ่านข้อมูลจากหน้าบ้านได้ (แก้ Error 500) ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// server/index.js
-
 app.use(cors({
     origin: [
-        "http://localhost:5173",             // เผื่อไว้ (Vite Default)
-        "http://localhost:3001",             // 1. ลิงก์ Localhost ของคุณ
-        "http://127.0.0.1:3001",             // 2. ลิงก์ IP Localhost
-        "https://hotel-booking-web-eight.vercel.app" // 3. ลิงก์ Vercel ของคุณ (สำคัญมาก!)
+        "http://localhost:5173",             
+        "http://localhost:3001",             
+        "http://127.0.0.1:3001",             
+        "https://hotel-booking-web-eight.vercel.app" 
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
@@ -37,7 +34,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-
 // Database Connection
 const db = mysql.createPool({
     host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
@@ -47,11 +43,9 @@ const db = mysql.createPool({
     database: 'test',
     ssl: {
         minVersion: 'TLSv1.2',
-        // 🚩 แก้ไขตรงนี้: เปลี่ยน true เป็น false เพื่อป้องกัน Server ดับตอนเชื่อมต่อ Database
         rejectUnauthorized: false 
     }
 });
-
 
 // --- API หลัก ---
 
@@ -77,24 +71,31 @@ app.post('/admin-login', (req, res) => {
     });
 });
 
-// ==========================================
-// 📌 [NEW - EDITED] ส่วนจัดการ Admin Management (แก้ไขให้ตรงกับ DB เดิม)
-// ==========================================
-
 // --- 1. จัดการ Users (Admin Only) ---
 app.get('/users', (req, res) => {
-    // แก้ไข: เลือก column ให้ตรงกับตาราง users (id, name, email, phone, role)
     db.query('SELECT id, name, email, phone, role FROM users', (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
 
+// ✅ [เพิ่มใหม่] API แก้ไขข้อมูลลูกค้า สำหรับ Admin
+app.put('/users/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, email, phone } = req.body;
+    
+    // อัปเดตข้อมูล Name, Email, Phone
+    const sql = "UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?";
+    db.query(sql, [name, email, phone, id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        // ส่ง Success กลับไปเพื่อให้ Frontend รับทราบ
+        res.json({ success: true, message: 'User updated successfully' });
+    });
+});
+
 app.delete('/users/:id', (req, res) => {
     const { id } = req.params;
-    // ป้องกันการลบ Super Admin (id 1)
     if (id == 1) return res.status(403).json({ message: "Cannot delete Super Admin" });
-
     db.query('DELETE FROM users WHERE id = ?', [id], (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ message: 'User deleted' });
@@ -111,8 +112,6 @@ app.put('/users/:id/role', (req, res) => {
 });
 
 // --- 2. จัดการ Rooms (Admin Only) ---
-// แก้ไข: ให้ใช้ column name, price, image_url ตาม Database เดิม
-
 app.get('/rooms', (req, res) => {
     db.query('SELECT * FROM rooms', (err, results) => {
         if (err) return res.status(500).json(err);
@@ -121,20 +120,11 @@ app.get('/rooms', (req, res) => {
 });
 
 app.post('/rooms', upload.single('room_image'), (req, res) => {
-    // รับค่า room_name จากหน้าบ้าน แต่จะบันทึกลงช่อง name ใน DB
     const { room_name, price } = req.body;
-    // หมายเหตุ: description และ guest_limit ถูกตัดออกเพราะ DB ไม่มีช่องเก็บ
-    
-    const image_url = req.file ? req.file.filename : ''; // บันทึกชื่อไฟล์ลง image_url
-
-    // ✅ SQL แก้ให้ตรงกับตาราง rooms (name, price, image_url)
+    const image_url = req.file ? req.file.filename : ''; 
     const sql = 'INSERT INTO rooms (name, price, image_url) VALUES (?, ?, ?)';
-    
     db.query(sql, [room_name, price, image_url], (err, result) => {
-        if (err) {
-            console.error("DB Insert Error:", err);
-            return res.status(500).json(err);
-        }
+        if (err) return res.status(500).json(err);
         res.json({ message: 'Room added successfully' });
     });
 });
@@ -142,19 +132,14 @@ app.post('/rooms', upload.single('room_image'), (req, res) => {
 app.put('/rooms/:id', upload.single('room_image'), (req, res) => {
     const { id } = req.params;
     const { room_name, price } = req.body;
-    
-    // ✅ SQL แก้ให้ตรงกับตาราง rooms
     let sql = 'UPDATE rooms SET name=?, price=?';
     let params = [room_name, price];
-
     if (req.file) {
-        sql += ', image_url=?'; // อัปเดตชื่อไฟล์รูป
+        sql += ', image_url=?'; 
         params.push(req.file.filename);
     }
-    
     sql += ' WHERE id=?';
     params.push(id);
-
     db.query(sql, params, (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ message: 'Room updated' });
@@ -169,98 +154,65 @@ app.delete('/rooms/:id', (req, res) => {
     });
 });
 
-// ==========================================
-// 📌 [END NEW] จบส่วนจัดการ Admin Management
-// ==========================================
-
-
-// ✅ ส่วน B: สมัครสมาชิก (ใช้ phone)
+// ✅ สมัครสมาชิก
 app.post('/register', (req, res) => {
     const { name, email, password, phone } = req.body;
-
-    // 1. สร้างตัวแปร sqlCheck เพื่อเช็คว่าอีเมลซ้ำไหม
     const sqlCheck = "SELECT * FROM users WHERE email = ?";
-    
     db.query(sqlCheck, [email], (err, results) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
-        
-        if (results.length > 0) {
-            return res.status(400).json({ success: false, message: 'Email already taken' });
-        }
+        if (results.length > 0) return res.status(400).json({ success: false, message: 'Email already taken' });
 
-        // 2. ถ้าไม่ซ้ำ ให้บันทึกข้อมูล
         const sqlInsert = "INSERT INTO users (name, email, password, phone) VALUES (?, ?, ?, ?)";
-        db.query(sqlInsert, [name, email, password, phone], (err, result) => {
+        db.query(sqlInsert, [name, email, password, String(phone)], (err, result) => {
             if (err) return res.status(500).json({ success: false, message: err.message });
             res.status(200).json({ success: true, message: 'User registered successfully' });
         });
     });
 });
 
-// ✅ ส่วน B (Updated): แก้ไขข้อมูลส่วนตัว + รหัสผ่าน + รูปโปรไฟล์ (ใช้ phone)
+// ✅ แก้ไขข้อมูลส่วนตัว (User ฝั่งหน้าบ้าน)
 app.put('/update-user', upload.single('profile_image'), (req, res) => {
     const { id, name, phone, gender, birthdate, password } = req.body;
     const validBirthdate = (!birthdate || birthdate === 'null' || birthdate === '') ? null : birthdate;
-
-    // สร้าง SQL แบบ Dynamic ตามค่าที่ส่งมา
     let sql = "UPDATE users SET name=?, phone=?, gender=?, birthdate=?";
-    let params = [name, phone, gender, validBirthdate];
+    let params = [name, String(phone), gender, validBirthdate];
 
-    // ถ้ามีการอัปรูปมาด้วย
     if (req.file) {
         sql += ", profile_image=?";
         params.push(req.file.filename);
     }
-
-    // ถ้ามีการเปลี่ยนรหัสผ่าน
     if (password && password.trim() !== "") {
         sql += ", password=?";
         params.push(password);
     }
-
     sql += " WHERE id=?";
     params.push(id);
 
     db.query(sql, params, (err) => {
         if (err) return res.status(500).json(err);
-        // ส่งข้อมูลล่าสุดกลับไปอัปเดตหน้าเว็บ
         db.query("SELECT * FROM users WHERE id=?", [id], (e, r) => res.json({ success: true, user: r[0] }));
     });
 });
 
-// ✅ API (แก้ไข): เช็คจำนวนห้องว่าง พร้อม Log ดูค่าใน Console
+// ✅ เช็คจำนวนห้องว่าง
 app.get('/room-availability', (req, res) => {
     const { room_name } = req.query;
-    
-    // 1. ระบุเวลาปัจจุบันแบบเจาะจงโซนไทย (YYYY-MM-DD)
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
 
-    console.log(`----- Checking Availability -----`);
-    console.log(`Checking Room: ${room_name}`);
-    console.log(`For Date: ${today}`);
-
-    // 2. SQL Query แบบชัวร์ที่สุด (ใช้ DATE() ครอบเพื่อตัดเวลาทิ้ง เผื่อใน DB มีเวลาติดมา)
     const sql = `
-        SELECT COUNT(*) AS count 
+        SELECT SUM(IFNULL(room_count, 1)) AS total_booked 
         FROM bookings 
         WHERE room_name = ? 
-        AND status != 'cancelled'
+        AND status NOT IN ('cancelled', 'rejected')
         AND (DATE(check_in_date) <= ? AND DATE(check_out_date) > ?)
     `;
 
     db.query(sql, [room_name, today, today], (err, results) => {
-        if (err) {
-            console.error("SQL Error:", err);
-            return res.status(500).json(err);
-        }
+        if (err) return res.status(500).json(err);
         
-        const bookedCount = results[0].count;
+        const bookedCount = results[0].total_booked || 0;
         const maxRooms = 15; 
         const available = maxRooms - bookedCount;
-
-        console.log(`Found Booked: ${bookedCount} rooms`);
-        console.log(`Available Left: ${available}`);
-        console.log(`---------------------------------`);
 
         res.json({ 
             room: room_name, 
@@ -270,8 +222,6 @@ app.get('/room-availability', (req, res) => {
     });
 });
 
-// --- Booking API ---
-
 app.get('/bookings/occupied', (req, res) => {
     const { room_name } = req.query;
     db.query("SELECT check_in_date, check_out_date FROM bookings WHERE room_name = ? AND status NOT IN ('cancelled', 'rejected')", [room_name], (err, results) => {
@@ -279,36 +229,38 @@ app.get('/bookings/occupied', (req, res) => {
     });
 });
 
-// ✅ ส่วน C (แก้ไข): จองห้องพัก + จำกัดห้องวันละ 15 ห้อง
+// ✅ จองห้องพัก
 app.post('/reserve', upload.single('slip'), (req, res) => {
-    const { user_id, room_name, price, check_in_date, check_out_date, payment_method } = req.body;
+    const { user_id, room_name, price, check_in_date, check_out_date, payment_method, room_count } = req.body;
+    const count = parseInt(room_count) || 1;
     const payment_slip = req.file ? req.file.filename : null;
     
-    // แปลงวันที่ให้เป็นมาตรฐาน YYYY-MM-DD เพื่อป้องกันบั๊กเวลา
     const checkIn = new Date(check_in_date).toISOString().split('T')[0];
     const checkOut = new Date(check_out_date).toISOString().split('T')[0];
 
-    // 1. เช็คห้องว่าง (Overlap Check)
-    // ดึงรายการจองทั้งหมดที่ทับซ้อนกับช่วงเวลานี้
-    const checkSql = "SELECT * FROM bookings WHERE room_name = ? AND status NOT IN ('cancelled', 'rejected') AND (check_in_date < ? AND check_out_date > ?)";
+    const checkSql = `
+        SELECT SUM(IFNULL(room_count, 1)) AS total_booked 
+        FROM bookings 
+        WHERE room_name = ? 
+        AND status NOT IN ('cancelled', 'rejected') 
+        AND (check_in_date < ? AND check_out_date > ?)
+    `;
     
     db.query(checkSql, [room_name, checkOut, checkIn], (err, results) => {
         if (err) return res.status(500).json(err);
         
-        // --- แก้ไขตรงนี้: กำหนด LIMIT 15 ห้อง ---
+        const totalBooked = parseInt(results[0].total_booked) || 0;
         const MAX_ROOMS = 15; 
         
-        // ถ้านับจำนวนการจองในช่วงเวลานี้ได้มากกว่าหรือเท่ากับ 15 ให้แจ้งเตือนว่าเต็ม
-        if (results.length >= MAX_ROOMS) {
+        if (totalBooked + count > MAX_ROOMS) {
             return res.status(400).json({ 
                 success: false, 
-                message: `ขออภัย ห้อง ${room_name} ในช่วงวันที่เลือก เต็มแล้ว (ครบ ${MAX_ROOMS} ห้อง)` 
+                message: `ขออภัย ห้องว่างไม่พอ (เหลือว่าง ${MAX_ROOMS - totalBooked} ห้อง)` 
             });
         }
         
-        // 2. ถ้ายังไม่ครบ 15 ให้บันทึก
-        const sql = "INSERT INTO bookings (user_id, room_name, price, check_in_date, check_out_date, status, payment_method, payment_slip, created_at, booking_date) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, DATE_ADD(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 7 HOUR))";
-        db.query(sql, [user_id, room_name, price, checkIn, checkOut, payment_method, payment_slip], (err) => {
+        const sql = "INSERT INTO bookings (user_id, room_name, room_count, price, check_in_date, check_out_date, status, payment_method, payment_slip, created_at, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, DATE_ADD(NOW(), INTERVAL 7 HOUR), DATE_ADD(NOW(), INTERVAL 7 HOUR))";
+        db.query(sql, [user_id, room_name, count, price, checkIn, checkOut, payment_method, payment_slip], (err) => {
             if (err) return res.status(500).json(err);
             res.json({ success: true });
         });
@@ -316,7 +268,20 @@ app.post('/reserve', upload.single('slip'), (req, res) => {
 });
 
 app.get('/my-bookings/:userId', (req, res) => {
-    db.query("SELECT * FROM bookings WHERE user_id = ? ORDER BY id DESC", [req.params.userId], (err, r) => res.json(r));
+    const sql = `
+        SELECT 
+            bookings.*, 
+            users.name AS fullname, 
+            users.email AS email 
+        FROM bookings 
+        LEFT JOIN users ON bookings.user_id = users.id 
+        WHERE bookings.user_id = ? 
+        ORDER BY bookings.id DESC
+    `;
+    db.query(sql, [req.params.userId], (err, r) => {
+        if (err) return res.status(500).json(err);
+        res.json(r);
+    });
 });
 
 app.put('/cancel-booking', (req, res) => {
@@ -327,8 +292,20 @@ app.put('/cancel-booking', (req, res) => {
 });
 
 app.get('/bookings', (req, res) => {
-    const sql = "SELECT *, payment_slip AS slip_image FROM bookings ORDER BY id DESC";
-    db.query(sql, (err, r) => res.json(r));
+    const sql = `
+        SELECT 
+            bookings.*, 
+            bookings.payment_slip AS slip_image,
+            users.name AS fullname,
+            users.email AS email
+        FROM bookings
+        LEFT JOIN users ON bookings.user_id = users.id
+        ORDER BY bookings.id DESC
+    `;
+    db.query(sql, (err, r) => {
+        if (err) return res.status(500).json(err);
+        res.json(r);
+    });
 });
 
 app.put('/updateBookingStatus', (req, res) => {
@@ -340,7 +317,6 @@ app.put('/updateBookingStatus', (req, res) => {
 });
 
 // --- Reschedule System ---
-
 app.post('/request-reschedule', (req, res) => {
     const { booking_id, new_check_in, new_check_out, new_price } = req.body;
     const sql = "UPDATE bookings SET status='pending_reschedule', request_check_in=?, request_check_out=?, request_price=? WHERE id=?";
@@ -381,28 +357,20 @@ app.post('/admin/approve-reschedule', (req, res) => {
     }
 });
 
-// ✅ เพิ่ม API สำหรับตั้งรหัสผ่านใหม่ (Forgot Password)
 app.post('/reset-password', (req, res) => {
-    // ดึงค่ามาเช็คทั้ง password และ newPassword (เผื่อหน้าบ้านใช้ชื่อต่างกัน)
     const email = req.body.email;
     const password = req.body.password || req.body.newPassword; 
-
     if (!email || !password) {
         return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
-
     db.query("UPDATE users SET password = ? WHERE email = ?", [password, email], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
-        }
-        
+        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
         res.status(200).json({ success: true, message: 'เปลี่ยนรหัสผ่านสำเร็จแล้ว' });
     });
 });
 
-const port = process.env.PORT || 3000; 
+const port = process.env.PORT || 3001; 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });

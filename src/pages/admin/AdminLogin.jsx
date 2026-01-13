@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import Swal from 'sweetalert2'; // ✅ 1. เพิ่ม import Swal เพื่อความสวยงามตอนแจ้งเตือน
+import API_URL from "/src/config";
 
 const AdminLogin = ({ onLogin }) => {
   const [email, setEmail] = useState('');
@@ -14,7 +15,7 @@ const AdminLogin = ({ onLogin }) => {
   const handleSubmit = async () => {
     try {
       // ยิงไปที่ /admin-login (API ใหม่สำหรับ Admin โดยเฉพาะ)
-      const response = await fetch('https://hotel-booking-web-kfks.onrender.com/admin-login', {
+      const response = await fetch(API_URL +'/admin-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: email, password })

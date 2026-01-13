@@ -1,6 +1,10 @@
+// client/src/pages/client/BookingHistory.jsx
+
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import API_URL from "/src/config";
+import { Search, X } from 'lucide-react'; // ✅ เพิ่ม Icon
 
 // 1. นำเข้า Flatpickr และ CSS
 import flatpickr from "flatpickr";
@@ -9,12 +13,15 @@ import "flatpickr/dist/themes/material_blue.css";
 
 const BookingHistory = ({ user }) => {
   const [bookings, setBookings] = useState([]);
+  // ✅ เพิ่ม state สำหรับกรองวันที่
+  const [filterDate, setFilterDate] = useState('');
+  
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       const userId = user.id || user.user_id || user.ID; 
-      fetch(`https://hotel-booking-web-kfks.onrender.com/my-bookings/${userId}`)
+      fetch(`${API_URL}/my-bookings/${userId}`)
         .then(res => res.json())
         .then(data => setBookings(data))
         .catch(err => console.error(err));
@@ -23,22 +30,7 @@ const BookingHistory = ({ user }) => {
 
   if (!user) return <div className="p-10 text-center text-red-500">กรุณาเข้าสู่ระบบเพื่อดูประวัติ</div>;
 
-  const handleLogout = () => {
-    Swal.fire({
-      title: 'ออกจากระบบ?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'ออกเลย',
-      cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        localStorage.removeItem('user'); 
-        navigate('/'); 
-        window.location.reload(); 
-      }
-    });
-  };
-
+  // ฟังก์ชันเช็คว่าแก้ไขได้ไหม (ล่วงหน้า 3 วัน)
   const canModify = (checkInDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -69,7 +61,7 @@ const BookingHistory = ({ user }) => {
     });
 
     if (result.isConfirmed) {
-      fetch('https://hotel-booking-web-kfks.onrender.com/cancel-booking', {
+      fetch(`${API_URL}/cancel-booking`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ booking_id: bookingId })
@@ -94,19 +86,15 @@ const BookingHistory = ({ user }) => {
     }
   };
 
-  //  ฟังก์ชันสำหรับการเลื่อนวัน (Reschedule)
   const handleReschedule = async (bookingId, roomName, oldCheckIn, oldCheckOut, currentPrice) => {
-    //  ตรวจสอบเงื่อนไข 3 วัน
     if (!canModify(oldCheckIn)) {
         Swal.fire('ไม่สามารถเลื่อนวันได้', 'ต้องแจ้งเลื่อนวันล่วงหน้าอย่างน้อย 3 วัน', 'error');
         return;
     }
 
-    // 1. ดึงข้อมูล "วันที่ไม่ว่าง" ของห้องนี้มาก่อน
     let occupiedDates = [];
     try {
-        // ใช้ encodeURIComponent เพื่อป้องกันกรณีชื่อห้องมีวรรค
-        const response = await fetch(`https://hotel-booking-web-kfks.onrender.com/bookings/occupied?room_name=${encodeURIComponent(roomName)}`);
+        const response = await fetch(`${API_URL}/bookings/occupied?room_name=${encodeURIComponent(roomName)}`);
         const data = await response.json();
         
         if (Array.isArray(data)) {
@@ -119,15 +107,13 @@ const BookingHistory = ({ user }) => {
         console.error("Error fetching occupied dates:", err);
     }
 
-    // คำนวณราคาต่อคืน
     const oneDay = 24 * 60 * 60 * 1000;
     const start = new Date(oldCheckIn);
     const end = new Date(oldCheckOut || oldCheckIn);
     let oldDays = Math.round(Math.abs((end - start) / oneDay));
-    if (oldDays === 0) oldDays = 1; // ป้องกันการหารด้วย 0
+    if (oldDays === 0) oldDays = 1; 
     const pricePerNight = currentPrice / oldDays;
 
-    // 2. แสดง Popup พร้อม Flatpickr
     const { value: formValues } = await Swal.fire({
       title: 'ขอเลื่อนวันเข้าพัก',
       html: `
@@ -157,7 +143,6 @@ const BookingHistory = ({ user }) => {
       cancelButtonText: 'ยกเลิก',
       confirmButtonColor: '#ffc107',
       
-      //  เริ่มต้น Flatpickr เมื่อเปิด Popup
       didOpen: () => {
         const checkInInput = document.getElementById('swal-new-checkin');
         const checkOutInput = document.getElementById('swal-new-checkout');
@@ -165,9 +150,8 @@ const BookingHistory = ({ user }) => {
         const fpCheckIn = flatpickr(checkInInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: occupiedDates, //  บล็อกวันที่ไม่ว่าง
+            disable: occupiedDates,
             onChange: (selectedDates) => {
-                // เมื่อเลือกวันเช็คอินแล้ว ให้เปิดช่องเช็คเอาท์ และตั้ง minDate
                 if (selectedDates.length > 0) {
                     checkOutInput.disabled = false;
                     const nextDay = new Date(selectedDates[0]);
@@ -181,7 +165,7 @@ const BookingHistory = ({ user }) => {
         const fpCheckOut = flatpickr(checkOutInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: occupiedDates, //  บล็อกวันที่ไม่ว่าง
+            disable: occupiedDates, 
         });
       },
 
@@ -198,7 +182,6 @@ const BookingHistory = ({ user }) => {
           return null;
         }
 
-        // คำนวณราคาใหม่
         const diffTime = Math.abs(new Date(newCheckOut) - new Date(newCheckIn));
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
         const newTotalPrice = diffDays * pricePerNight;
@@ -208,7 +191,6 @@ const BookingHistory = ({ user }) => {
     });
 
     if (formValues) {
-      // 3. แสดงยืนยันอีกครั้งหากราคาเปลี่ยน
       const confirmResult = await Swal.fire({
           title: 'ยืนยันการส่งคำขอ?',
           html: `
@@ -223,7 +205,7 @@ const BookingHistory = ({ user }) => {
       });
 
       if (confirmResult.isConfirmed) {
-          fetch('https://hotel-booking-web-kfks.onrender.com/request-reschedule', {
+          fetch(`${API_URL}/request-reschedule`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -237,13 +219,8 @@ const BookingHistory = ({ user }) => {
           .then(data => {
             if (data.success) {
               Swal.fire('ส่งคำขอแล้ว!', 'กรุณารอเจ้าหน้าที่ตรวจสอบและอนุมัติ', 'success');
-              
-              // อัปเดต State ให้เป็นสถานะรออนุมัติเลื่อนวัน
               setBookings(bookings.map(b => 
-                b.id === bookingId ? { 
-                    ...b, 
-                    status: 'pending_reschedule' 
-                } : b
+                b.id === bookingId ? { ...b, status: 'pending_reschedule' } : b
               ));
             } else {
               Swal.fire('เกิดข้อผิดพลาด', data.message, 'error');
@@ -251,35 +228,55 @@ const BookingHistory = ({ user }) => {
           })
           .catch(err => console.error(err));
       } else {
-        // ถ้ากด Cancel ในหน้ายืนยันราคา ให้เรียกฟังก์ชันเดิมซ้ำเพื่อให้เลือกใหม่
         handleReschedule(bookingId, roomName, oldCheckIn, oldCheckOut, currentPrice);
       }
     }
   };
 
+  // ✅ กรองข้อมูลตามวันที่เลือก
+  const filteredBookings = bookings.filter((item) => {
+    if (!filterDate) return true; // ถ้าไม่ได้เลือกวัน ให้แสดงทั้งหมด
+    // แปลงวันที่ใน DB ให้เป็น YYYY-MM-DD เพื่อเทียบกับ input date
+    const itemDate = new Date(item.check_in_date || item.booking_date).toISOString().split('T')[0];
+    return itemDate === filterDate;
+  });
+
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h2 className="text-3xl font-bold text-blue-900">📅 ประวัติการจองของฉัน</h2>
-        <button 
-          onClick={handleLogout}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow"
-        >
-          ออกจากระบบ
-        </button>
+        
+        {/* ✅ เปลี่ยนจากปุ่ม Logout เป็นช่องค้นหา */}
+        <div className="relative">
+            <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow border border-blue-200">
+                <span className="text-gray-500 text-sm font-bold">🔍 ค้นหาวันเข้าพัก:</span>
+                <input 
+                    type="date" 
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="outline-none text-blue-800 font-bold bg-transparent"
+                />
+                {filterDate && (
+                    <button onClick={() => setFilterDate('')} className="text-red-500 hover:text-red-700">
+                        <X size={18} />
+                    </button>
+                )}
+            </div>
+        </div>
       </div>
 
-      {bookings.length === 0 ? (
+      {filteredBookings.length === 0 ? (
         <div className="bg-white p-8 rounded-xl shadow text-center text-gray-500">
-          ยังไม่มีการจองห้องพัก
+          {filterDate ? 'ไม่พบการจองในวันที่เลือก' : 'ยังไม่มีการจองห้องพัก'}
         </div>
       ) : (
         <div className="space-y-4">
-          {bookings.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-xl shadow-md flex justify-between items-center border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
+          {/* ✅ วนลูป filteredBookings แทน bookings */}
+          {filteredBookings.map((item) => (
+            <div key={item.id} className="bg-white p-6 rounded-xl shadow-md flex flex-col md:flex-row justify-between items-center border-l-4 border-blue-500 hover:shadow-lg transition-shadow gap-4">
               
               {/* ส่วนแสดงข้อมูลห้องพัก (ซ้าย) */}
-              <div>
+              <div className="w-full md:w-auto">
                 <h3 className="text-xl font-bold text-gray-800">{item.room_name}</h3>
                 <div className="text-sm text-gray-600 mt-2 space-y-1">
                     <p>
@@ -314,14 +311,13 @@ const BookingHistory = ({ user }) => {
                 {item.status === 'pending_reschedule' && <p className="text-xs text-orange-600 mt-1">แอดมินกำลังตรวจสอบวันที่คุณขอใหม่</p>}
               </div>
 
-              {/* ส่วนแสดงราคาและปุ่ม (ขวา) - จัด Group รวมกันเพื่อให้ Layout ไม่แตก */}
-              <div className="flex flex-col items-end gap-2">
+              {/* ส่วนแสดงราคาและปุ่ม (ขวา) */}
+              <div className="flex flex-col items-end gap-2 w-full md:w-auto">
                   <p className="text-2xl font-bold text-blue-600">
                       {Number(item.price).toLocaleString()} ฿
                   </p>
               
                   <div className="flex gap-2 justify-end mt-1">
-                    {/*  ซ่อนปุ่มถ้าสถานะเป็น pending_reschedule */}
                     {(item.status === 'upcoming' || item.status === 'approved' || item.status === 'pending') && item.status !== 'pending_reschedule' && (
                       <>
                         <button 
@@ -332,7 +328,6 @@ const BookingHistory = ({ user }) => {
                         </button>
 
                         <button 
-                          //  ส่ง item.room_name เข้าไปในฟังก์ชัน
                           onClick={() => handleReschedule(item.id, item.room_name, (item.check_in_date || item.booking_date), item.check_out_date, item.price)}
                           className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200"
                         >

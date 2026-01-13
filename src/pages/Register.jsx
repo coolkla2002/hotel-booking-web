@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom'; 
-import Swal from 'sweetalert2'; 
+import Swal from 'sweetalert2';
+import API_URL from "/src/config";
+import myLogo from '../assets/logo.png'; // ✅ แก้ไข Path ให้ถอยหลัง 1 ระดับ (จาก pages ไป src/assets)
 
 const Register = () => {
   const navigate = useNavigate(); 
@@ -48,7 +50,7 @@ const Register = () => {
     }
 
     try {
-        const response = await fetch('https://hotel-booking-web-kfks.onrender.com/register', {
+      const response = await fetch(API_URL + '/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -89,12 +91,17 @@ const Register = () => {
         backgroundSize: 'cover',
         backgroundPosition: 'center'
     }}>
-      <div className="p-4 absolute top-0 left-0 flex items-center">
-        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold mr-2">RC</div>
+      {/* ✅ แก้ไขส่วน Header: ใช้ตัวแปร myLogo ที่ import มา */}
+      <div className="flex justify-center items-center mb-6 mt-6">
+        <img 
+            src="/src/assets/logo.png"  
+            alt="Logo" 
+            className="w-12 h-12 object-contain mr-3 filter drop-shadow-md" 
+        />
         <h1 className="text-2xl font-bold text-white" style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>RCBAT Hotel</h1>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 mt-16">
+      <div className="flex-1 flex items-center justify-center p-4 mt-8">
         <div className="bg-blue-300/80 backdrop-blur-sm p-8 rounded-[40px] shadow-2xl w-full max-w-2xl border-4 border-blue-200/50">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-white bg-blue-500/80 inline-block px-8 py-3 rounded-full shadow-md">
@@ -111,7 +118,7 @@ const Register = () => {
                   type="text" 
                   name="fullname" 
                   onChange={handleChange} 
-                  value={formData.fullname} // เพิ่ม value
+                  value={formData.fullname} 
                   placeholder="Full Name" 
                   required 
                   className="w-full p-4 rounded-2xl bg-gray-100/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg placeholder-gray-400 shadow-inner"
@@ -143,16 +150,15 @@ const Register = () => {
                 />
               </div>
 
-              {/* --- ส่วนเบอร์โทรศัพท์ที่แก้ไข --- */}
               <div>
                 <label className="block text-blue-900 font-bold mb-2 text-lg">เบอร์โทรศัพท์ (10 หลัก)</label>
                 <input 
                   type="text" 
-                  inputMode="numeric" // ✅ ช่วยให้มือถือเด้งแป้นพิมพ์ตัวเลข
-                  maxLength={10}      // ✅ จำกัด HTML เบื้องต้น
+                  inputMode="numeric" 
+                  maxLength={10}      
                   name="phone" 
                   onChange={handleChange}
-                  value={formData.phone} // ✅ สำคัญ: ต้องผูกค่ากับ State เพื่อให้ Logic ทำงาน
+                  value={formData.phone} 
                   placeholder="08xxxxxxxx" 
                   className="w-full p-4 rounded-2xl bg-gray-100/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg placeholder-gray-400 shadow-inner"
                 />

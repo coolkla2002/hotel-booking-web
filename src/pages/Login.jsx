@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock } from 'lucide-react';
+import API_URL from "/src/config";
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -9,10 +10,8 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    // --- ลบ Logic Admin เดิมออก (ย้ายไป AdminLogin) ---
-
     try {
-      const response = await fetch('https://hotel-booking-web-kfks.onrender.com/login', {
+      const response = await fetch(API_URL + '/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -23,7 +22,7 @@ const Login = ({ onLogin }) => {
       if (data.success) {
         console.log("Login สำเร็จ ข้อมูลที่ได้:", data.user); 
         onLogin(data.user);
-        navigate('/'); // ลูกค้าไปหน้า Home
+        navigate('/'); 
       } else {
         setError(data.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       }
@@ -38,7 +37,17 @@ const Login = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-blue-50 p-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-blue-100">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4">RC</div>
+          
+          {/* --- ส่วนที่แก้ไข: เปลี่ยนจากวงกลม RC เป็น Logo --- */}
+          <div className="w-24 h-24 mx-auto mb-4 overflow-hidden rounded-2xl shadow-sm">
+            <img 
+              src="images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
+              alt="Hotel Logo" 
+              className="w-full h-full object-contain"
+            />
+          </div>
+          {/* ------------------------------------------- */}
+
           <h1 className="text-3xl font-bold text-blue-900">เข้าสู่ระบบ</h1>
           <p className="text-gray-500">สำหรับลูกค้า</p>
         </div>
@@ -91,7 +100,6 @@ const Login = ({ onLogin }) => {
             </Link>
           </div>
           
-          {/* ลิงก์แอบไปหน้า Admin Login */}
           <div className="mt-6 text-center border-t pt-4">
              <Link to="/admin-login" className="text-gray-400 text-xs hover:text-gray-600">Admin Login</Link>
           </div>
