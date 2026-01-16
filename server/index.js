@@ -49,6 +49,27 @@ const db = mysql.createPool({
 
 // --- API หลัก ---
 
+// ✅ เพิ่ม API นี้เพื่อซ่อม Database (รันครั้งเดียว)
+app.get('/fix-database', (req, res) => {
+    // คำสั่งสร้างคอลัมน์ gender และ birthdate หากยังไม่มี
+    const sql = `
+        ALTER TABLE users 
+        ADD COLUMN gender VARCHAR(20) NULL, 
+        ADD COLUMN birthdate DATE NULL
+    `;
+    
+    db.query(sql, (err, result) => {
+        if (err) {
+            // ถ้า Error เพราะมีคอลัมน์อยู่แล้ว ให้แจ้งเตือนเฉยๆ ไม่ต้องตกใจ
+            if (err.code === 'ER_DUP_FIELDNAME') {
+                return res.send('<h2 style="color:orange">⚠️ มีคอลัมน์ gender/birthdate อยู่แล้ว (ใช้งานได้เลย)</h2>');
+            }
+            return res.send(`<h2 style="color:red">❌ เกิดข้อผิดพลาด: ${err.message}</h2>`);
+        }
+        res.send('<h2 style="color:green">✅ สำเร็จ! เพิ่มคอลัมน์ gender และ birthdate ให้เรียบร้อยแล้ว</h2>');
+    });
+});
+
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     db.query("SELECT * FROM users WHERE email = ? AND password = ?", [username, password], (err, results) => {
@@ -174,6 +195,7 @@ app.post('/register', (req, res) => {
 app.put('/update-user', upload.single('profile_image'), (req, res) => {
     const { id, name, phone, gender, birthdate, password } = req.body;
     const validBirthdate = (!birthdate || birthdate === 'null' || birthdate === '') ? null : birthdate;
+    
     let sql = "UPDATE users SET name=?, phone=?, gender=?, birthdate=?";
     let params = [name, String(phone), gender, validBirthdate];
 
@@ -194,7 +216,7 @@ app.put('/update-user', upload.single('profile_image'), (req, res) => {
     });
 });
 
-// ✅ เช็คจำนวนห้องว่าง
+// ✅ เช็คจำนวนห้องว่าง (แบบรวมของวันนี้)
 app.get('/room-availability', (req, res) => {
     const { room_name } = req.query;
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Bangkok' });
@@ -222,9 +244,11 @@ app.get('/room-availability', (req, res) => {
     });
 });
 
+// ✅ [แก้ไข] เพิ่ม room_count ใน SELECT เพื่อให้ Frontend คำนวณห้องว่างตามจริงได้
 app.get('/bookings/occupied', (req, res) => {
     const { room_name } = req.query;
-    db.query("SELECT check_in_date, check_out_date FROM bookings WHERE room_name = ? AND status NOT IN ('cancelled', 'rejected')", [room_name], (err, results) => {
+    db.query("SELECT check_in_date, check_out_date, room_count FROM bookings WHERE room_name = ? AND status NOT IN ('cancelled', 'rejected')", [room_name], (err, results) => {
+        if (err) return res.status(500).json(err);
         res.json(results || []);
     });
 });

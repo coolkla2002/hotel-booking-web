@@ -28,34 +28,42 @@ const EditProfile = ({ user, onUpdateUser }) => {
   const [preview, setPreview] = useState(null);
 
   // แก้ไขในส่วน useEffect ของ EditProfile.jsx
-useEffect(() => {
-  if (user) {
-    // ฟังก์ชันช่วยเติมเลข 0 ถ้าข้อมูลที่มาไม่มีเลข 0 นำหน้า
-    const formatPhone = (phone) => {
-      if (!phone) return '';
-      let p = phone.toString();
-      // ถ้าเบอร์มี 9 หลัก และตัวแรกไม่ใช่ 0 ให้เติม 0 เข้าไปข้างหน้า
-      if (p.length === 9 && !p.startsWith('0')) {
-        return '0' + p;
+  useEffect(() => {
+    if (user) {
+      // ฟังก์ชันช่วยเติมเลข 0 ถ้าข้อมูลที่มาไม่มีเลข 0 นำหน้า
+      const formatPhone = (phone) => {
+        if (!phone) return '';
+        let p = phone.toString();
+        // ถ้าเบอร์มี 9 หลัก และตัวแรกไม่ใช่ 0 ให้เติม 0 เข้าไปข้างหน้า
+        if (p.length === 9 && !p.startsWith('0')) {
+          return '0' + p;
+        }
+        return p;
+      };
+
+      // ✅ เพิ่มฟังก์ชันแปลงวันที่จาก Database (ISO) ให้เป็น YYYY-MM-DD สำหรับ input type="date"
+      const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return ''; // ถ้าวันที่ไม่ถูกต้อง
+        return date.toISOString().split('T')[0]; // ตัดเอาแค่ 2023-12-31
+      };
+
+      setFormData({
+        name: user.name || '',
+        gender: user.gender || '', // ✅ ดึงค่าเพศ
+        birthdate: formatDate(user.birthdate), // ✅ แปลงวันที่ให้ถูกต้องก่อนแสดง
+        phone: formatPhone(user.phone), 
+        email: user.email || '',
+      });
+
+      if (user?.profile_image) {
+        setPreview(`${API_URL}/uploads/${user.profile_image}`);
+      } else {
+        setPreview(null);
       }
-      return p;
-    };
-
-    setFormData({
-      name: user.name || '',
-      gender: user.gender || '',
-      birthdate: user.birthdate || '',
-      phone: formatPhone(user.phone), // ✅ เรียกใช้ฟังก์ชันจัดการเลข 0
-      email: user.email || '',
-    });
-
-    if (user?.profile_image) {
-      setPreview(`${API_URL}/uploads/${user.profile_image}`);
-    } else {
-      setPreview(null);
     }
-  }
-}, [user]);
+  }, [user]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -74,8 +82,8 @@ useEffect(() => {
         const data = new FormData();
         data.append('id', user.id);
         data.append('name', formData.name);
-        data.append('gender', formData.gender);
-        data.append('birthdate', formData.birthdate);
+        data.append('gender', formData.gender); // ✅ ส่งค่าเพศไปอัปเดต
+        data.append('birthdate', formData.birthdate); // ✅ ส่งค่าวันเกิดไปอัปเดต
         data.append('phone', formData.phone);
         
         if (imageFile) {

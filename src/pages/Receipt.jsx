@@ -130,8 +130,9 @@ const Receipt = () => {
           <thead>
             <tr className="bg-gray-200 text-gray-700">
               <th className="p-3 text-left border">รายการ (Description)</th>
+              <th className="p-3 text-center border">จำนวนห้อง (Rooms)</th> {/* เพิ่มคอลัมน์นี้ */}
               <th className="p-3 text-center border">วันที่ (Date)</th>
-              <th className="p-3 text-right border">จำนวนเงิน (Amount)</th>
+              <th className="p-3 text-right border">จำนวนเงินรวม (Total Amount)</th>
             </tr>
           </thead>
           <tbody>
@@ -139,6 +140,10 @@ const Receipt = () => {
               <td className="p-3 border">
                 <p className="font-bold">{booking.room_name}</p>
                 <p className="text-sm text-gray-500">ค่าที่พัก (Room Charge)</p>
+              </td>
+              {/* แสดงจำนวนห้องที่จอง โดยอ้างอิงจาก booking.room_count */}
+              <td className="p-3 border text-center font-bold">
+                {booking.room_count || 1} ห้อง
               </td>
               <td className="p-3 border text-center">
                 {new Date(booking.check_in_date).toLocaleDateString('th-TH')} <br/> ถึง <br/>
@@ -151,7 +156,7 @@ const Receipt = () => {
           </tbody>
           <tfoot>
             <tr className="bg-gray-100">
-              <td colSpan="2" className="p-3 text-right font-bold border">รวมทั้งสิ้น (Total)</td>
+              <td colSpan="3" className="p-3 text-right font-bold border">รวมเงินทั้งสิ้น (Total)</td>
               <td className="p-3 text-right font-bold border text-xl text-blue-800">
                 {Number(booking.price).toLocaleString()} บาท
               </td>

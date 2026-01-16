@@ -28,13 +28,26 @@ const CheckIconGreen = () => (
   </svg>
 );
 
-// ฟังก์ชันช่วย: แตกช่วงวันที่
+// ฟังก์ชันช่วย: แปลง Date Object หรือ String ให้เป็น "YYYY-MM-DD" เพื่อการเปรียบเทียบที่แม่นยำ
+const formatDateStr = (dateInput) => {
+    if (!dateInput) return "";
+    const date = new Date(dateInput);
+    // ใช้ toISOString แล้วตัดเอาแค่ข้างหน้า เพื่อไม่ให้ Timezone ทำวันเพี้ยน
+    // หรือถ้ากังวลเรื่อง Timezone Local ให้ใช้แบบนี้:
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+// ฟังก์ชันช่วย: แตกช่วงวันที่เป็น Array ของ YYYY-MM-DD
 const getDatesInRange = (startDate, endDate) => {
     const dates = [];
     let currentDate = new Date(startDate);
     const lastDate = new Date(endDate);
+    
     while (currentDate < lastDate) {
-        dates.push(new Date(currentDate).toISOString().split('T')[0]);
+        dates.push(formatDateStr(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);
     }
     return dates;
@@ -52,14 +65,20 @@ const HomePage = ({ user }) => {
       setRooms(data);
 
       const initialAvailability = {};
+      // ตั้งค่าเริ่มต้น (แสดงไว้ก่อนโหลดเสร็จ)
       data.forEach(room => {
         initialAvailability[room.name] = 15; 
       });
 
+      // ดึงข้อมูล availability ของวันนี้ (สำหรับแสดงหน้าการ์ด)
       for (const room of data) {
-          const resAvail = await fetch(`${API_URL}/room-availability?room_name=${encodeURIComponent(room.name)}`);
-          const dataAvail = await resAvail.json();
-          initialAvailability[room.name] = dataAvail.available;
+          try {
+            const resAvail = await fetch(`${API_URL}/room-availability?room_name=${encodeURIComponent(room.name)}`);
+            const dataAvail = await resAvail.json();
+            initialAvailability[room.name] = dataAvail.available;
+          } catch (e) {
+            console.error("Failed to load availability for", room.name);
+          }
       }
       setAvailability(initialAvailability);
     } catch (error) {
@@ -87,7 +106,6 @@ const HomePage = ({ user }) => {
     }
   }, [navigate]);
 
-  // ✅ ฟังก์ชันแสดงรูปภาพขยายใหญ่แบบ Gallery (เลื่อนรูปได้)
   const handleViewGallery = (room, initialIndex = 0) => {
     const images = [
       `${API_URL}/uploads/${room.image_url}`,
@@ -121,6 +139,7 @@ const HomePage = ({ user }) => {
     showModal(initialIndex);
   };
 
+  // ✅ ฟังก์ชันจองที่แก้ไขเรื่อง Date Format แล้ว
   const handleReserve = async (roomType, pricePerNight) => {
     if (!user) {
       Swal.fire({
@@ -137,41 +156,47 @@ const HomePage = ({ user }) => {
     }
 
     const userId = user.id || user.user_id || user.ID;
-    if (!userId) {
-        Swal.fire('ข้อมูลผิดพลาด', 'ไม่พบ User ID', 'error');
-        return;
-    }
+    const MAX_ROOMS_TOTAL = 15; 
 
-    let fullDates = [];
+    // 1. ดึงข้อมูลการจองทั้งหมด
+    let occupiedBookings = [];
     try {
         const response = await fetch(`${API_URL}/bookings/occupied?room_name=${encodeURIComponent(roomType)}`);
-        const bookings = await response.json();
+        const rawBookings = await response.json();
         
-        if (Array.isArray(bookings)) {
-            const MAX_ROOMS = 15;
-            const dailyCounts = {};
-
-            bookings.forEach(booking => {
-                const range = getDatesInRange(booking.check_in_date, booking.check_out_date);
-                range.forEach(dateStr => {
-                    dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + (booking.room_count || 1);
-                });
-            });
-
-            fullDates = Object.keys(dailyCounts).filter(date => dailyCounts[date] >= MAX_ROOMS);
+        // 🚨 ส่วนสำคัญ: แปลงวันที่จาก Server ให้เป็น YYYY-MM-DD ให้หมดก่อนนำไปใช้
+        if (Array.isArray(rawBookings)) {
+            occupiedBookings = rawBookings.map(b => ({
+                ...b,
+                check_in_date: formatDateStr(b.check_in_date),
+                check_out_date: formatDateStr(b.check_out_date),
+                room_count: b.room_count || 1 // ถ้าไม่มี room_count ให้นับเป็น 1
+            }));
+            
+            // Debug ดูข้อมูลว่ามาไหม (กด F12 ดูใน Console)
+            console.log("Bookings fetched:", occupiedBookings);
         }
     } catch (err) {
-        console.error("Error fetching occupied dates:", err);
+        console.error("Error fetching bookings:", err);
     }
+
+    // 2. สร้าง Map นับจำนวนห้องที่ถูกจองในแต่ละวันรอไว้เลย
+    const dailyBookedMap = {}; // { "2023-10-16": 2, "2023-10-17": 5 }
+    
+    occupiedBookings.forEach(booking => {
+        // แตกช่วงวันที่ของการจองนั้นๆ ออกมาเป็นรายวัน
+        const range = getDatesInRange(booking.check_in_date, booking.check_out_date);
+        range.forEach(dateStr => {
+            dailyBookedMap[dateStr] = (dailyBookedMap[dateStr] || 0) + booking.room_count;
+        });
+    });
+
+    console.log("Daily Booked Map:", dailyBookedMap);
 
     const { value: bookingData } = await Swal.fire({
       title: `จองห้องพัก: ${roomType} 📅`,
       html: `
         <div class="flex flex-col gap-4 text-left">
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">จำนวนห้อง (ว่าง ${availability[roomType] || 0} ห้อง)</label>
-                <input type="number" id="swal-room-count" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" value="1" min="1" max="${availability[roomType] || 15}">
-            </div>
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คอิน</label>
                 <input type="text" id="swal-checkin" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" placeholder="เลือกวันเช็คอิน...">
@@ -179,6 +204,18 @@ const HomePage = ({ user }) => {
             <div>
                 <label class="block text-sm font-bold text-gray-700 mb-1">วันที่เช็คเอาท์</label>
                 <input type="text" id="swal-checkout" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white" placeholder="เลือกวันเช็คเอาท์..." disabled>
+            </div>
+            
+            <div id="room-selection-container" style="display: none;" class="mt-2 p-4 bg-blue-50 rounded-xl border border-blue-200 shadow-sm animate-fade-in">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-bold text-gray-800">จำนวนห้องที่ต้องการ</label>
+                    <span id="availability-badge" class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded-full">
+                        กำลังตรวจสอบ...
+                    </span>
+                </div>
+                <select id="swal-room-count" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white font-medium text-lg text-gray-700">
+                </select>
+                <p id="availability-text" class="text-xs text-gray-500 mt-2 text-right"></p>
             </div>
         </div>
       `,
@@ -189,40 +226,87 @@ const HomePage = ({ user }) => {
       didOpen: () => {
         const checkInInput = document.getElementById('swal-checkin');
         const checkOutInput = document.getElementById('swal-checkout');
+        const roomContainer = document.getElementById('room-selection-container');
+        const roomSelect = document.getElementById('swal-room-count');
+        const badge = document.getElementById('availability-badge');
+        const availText = document.getElementById('availability-text');
+
+        const calculateRealtimeAvailability = () => {
+            const cin = checkInInput.value;
+            const cout = checkOutInput.value;
+
+            if (cin && cout) {
+                // สร้าง array วันที่ที่ลูกค้าเลือกจอง (เช่น เลือก 16-18 ก็จะได้ [16, 17])
+                const userSelectedRange = getDatesInRange(cin, cout);
+                
+                // สมมติว่าตอนแรกว่างเต็ม 15 ห้อง
+                let minRoomsAvailable = MAX_ROOMS_TOTAL;
+
+                // วนลูปเช็ค "ทุกวัน" ที่ลูกค้าเลือก เพื่อหาว่าวันไหน "เหลือห้องน้อยที่สุด" (Bottleneck)
+                userSelectedRange.forEach(dateStr => {
+                    // ดูว่าวันนั้นๆ มีคนจองไปแล้วกี่ห้อง (จาก Map ที่ทำไว้)
+                    const bookedCount = dailyBookedMap[dateStr] || 0; 
+                    const availableOnDate = MAX_ROOMS_TOTAL - bookedCount;
+                    
+                    // อัปเดตค่าต่ำสุด
+                    if (availableOnDate < minRoomsAvailable) {
+                        minRoomsAvailable = availableOnDate;
+                    }
+                });
+
+                // จำนวนที่เปิดให้จองได้จริง
+                const finalAvailable = Math.max(0, minRoomsAvailable);
+
+                // อัปเดตหน้าจอ
+                if (finalAvailable > 0) {
+                    badge.className = "bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full";
+                    badge.innerHTML = `ว่าง ${finalAvailable} ห้อง`;
+                    availText.innerHTML = `วันที่เลือกมีห้องว่างเหลือ ${finalAvailable} ห้อง จากทั้งหมด ${MAX_ROOMS_TOTAL} ห้อง`;
+                    
+                    // สร้าง Options 1 ถึง finalAvailable
+                    roomSelect.innerHTML = Array.from({ length: finalAvailable }, (_, i) => 
+                        `<option value="${i + 1}">${i + 1} ห้อง</option>`).join('');
+                    roomSelect.disabled = false;
+                } else {
+                    badge.className = "bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full";
+                    badge.innerHTML = `เต็มแล้ว`;
+                    availText.innerHTML = `ขออภัย ห้องพักเต็มในช่วงวันที่เลือก`;
+                    
+                    roomSelect.innerHTML = `<option value="">ไม่มีห้องว่าง</option>`;
+                    roomSelect.disabled = true;
+                }
+                roomContainer.style.display = 'block';
+            } else {
+                roomContainer.style.display = 'none';
+            }
+        };
+
         flatpickr(checkInInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: fullDates,
             onChange: (selectedDates) => {
                 checkOutInput.disabled = false;
                 if (checkOutInput._flatpickr) {
                      checkOutInput._flatpickr.set('minDate', new Date(selectedDates[0].getTime() + 86400000));
                 }
-                checkOutInput.focus();
+                calculateRealtimeAvailability();
             }
         });
         flatpickr(checkOutInput, {
             minDate: "today",
             dateFormat: "Y-m-d",
-            disable: fullDates,
+            onChange: calculateRealtimeAvailability
         });
       },
       preConfirm: () => {
         const checkIn = document.getElementById('swal-checkin').value;
         const checkOut = document.getElementById('swal-checkout').value;
         const roomCount = parseInt(document.getElementById('swal-room-count').value);
-        if (!checkIn || !checkOut) {
-          Swal.showValidationMessage('กรุณาเลือกวันทั้งเข้าและออก');
-          return null;
-        }
-        if (roomCount < 1 || roomCount > (availability[roomType] || 15)) {
-          Swal.showValidationMessage(`จำนวนห้องไม่ถูกต้อง`);
-          return null;
-        }
-        const date1 = new Date(checkIn);
-        const date2 = new Date(checkOut);
-        const diffTime = Math.abs(date2 - date1);
-        const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        if (!checkIn || !checkOut) return Swal.showValidationMessage('กรุณาเลือกวันที่เข้าพัก');
+        if (!roomCount || isNaN(roomCount)) return Swal.showValidationMessage('กรุณาเลือกจำนวนห้อง');
+        
+        const nights = Math.ceil(Math.abs(new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24)); 
         const totalPrice = nights * pricePerNight * roomCount;
         return { checkIn, checkOut, nights, roomCount, totalPrice };
       }
@@ -230,13 +314,14 @@ const HomePage = ({ user }) => {
 
     if (!bookingData) return;
 
+    // --- ส่วนการชำระเงิน ---
     const { value: paymentData } = await Swal.fire({
         title: 'ชำระเงิน / Payment',
         html: `
             <div class="text-left text-sm text-gray-700 space-y-4">
                 <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
                     <p>รายการ: <strong>${roomType} (${bookingData.roomCount} ห้อง)</strong></p>
-                    <p>ระยะเวลา: <strong>${bookingData.nights} คืน</strong></p>
+                    <p>ระยะเวลา: <strong>${bookingData.nights} คืน</strong> (${bookingData.checkIn} ถึง ${bookingData.checkOut})</p>
                     <p>ราคารวม: <strong class="text-xl text-blue-700">${bookingData.totalPrice.toLocaleString()} บาท</strong></p>
                 </div>
                 <div>
@@ -283,6 +368,7 @@ const HomePage = ({ user }) => {
 
     if (!paymentData) return; 
 
+    // --- ยืนยันการจอง ---
     const result = await Swal.fire({
       title: 'ยืนยันการจอง',
       html: `
@@ -338,7 +424,6 @@ const HomePage = ({ user }) => {
 
       <div className="max-w-6xl mx-auto py-8 px-4 space-y-24">
         {rooms.map((room, index) => {
-          // เตรียมรูปภาพสำหรับแต่ละห้อง
           const roomImages = [
             `${API_URL}/uploads/${room.image_url}`,
             room.name.includes('Double') ? "/images/IMG_5826.jpg" : "/images/8954a46a-7e0f-403d-9e30-f6d17ad26261.jpg",
@@ -347,8 +432,6 @@ const HomePage = ({ user }) => {
 
           return (
             <div key={room.id} className="bg-white rounded-[3rem] p-6 shadow-xl hover:shadow-2xl transition-shadow duration-300">
-                
-                {/* ✅ ส่วน Slider รูปภาพที่เลื่อนได้และคลิกดูรูปใหญ่ได้ */}
                 <div className="relative mb-8 h-80 md:h-[450px] rounded-3xl overflow-hidden shadow-md group cursor-zoom-in">
                   <Swiper
                     modules={[Navigation, Pagination, Autoplay, EffectFade]}
@@ -442,6 +525,8 @@ const HomePage = ({ user }) => {
         .swiper-pagination-bullet { background: white; opacity: 0.6; }
         .swiper-pagination-bullet-active { background: white; opacity: 1; width: 20px; border-radius: 4px; }
         .cursor-zoom-in { cursor: zoom-in; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
