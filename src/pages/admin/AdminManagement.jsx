@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { Trash2, Edit, Plus, Users, Home, ArrowLeft, Image as ImageIcon, X } from 'lucide-react'; 
+import { Trash2, Edit, Plus, Users, Home, ArrowLeft, Image as ImageIcon, X, Box } from 'lucide-react'; // ✅ เพิ่ม Icon Box
 import API_URL from "/src/config";
 
 const AdminManagement = () => {
@@ -18,15 +18,15 @@ const AdminManagement = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentRoom, setCurrentRoom] = useState(null);
 
-    // ✅ เพิ่ม State สำหรับจัดการรูปภาพหลายรูปและพรีวิว
+    // State สำหรับจัดการรูปภาพหลายรูปและพรีวิว
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [previews, setPreviews] = useState([]);
 
-    // ✅ State สำหรับ Modal แก้ไขลูกค้า
+    // State สำหรับ Modal แก้ไขลูกค้า
     const [showUserModal, setShowUserModal] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
 
-    // ✅ ฟังก์ชันช่วยจัดรูปแบบเบอร์โทร (เติมเลข 0 ถ้าไม่มี)
+    // ฟังก์ชันช่วยจัดรูปแบบเบอร์โทร (เติมเลข 0 ถ้าไม่มี)
     const formatPhoneNumber = (phone) => {
         if (!phone) return "";
         let p = phone.toString();
@@ -64,24 +64,22 @@ const AdminManagement = () => {
         } catch (err) { console.error(err); }
     };
 
-    // ✅ ฟังก์ชันจัดการเมื่อเลือกไฟล์รูปภาพ (หลายรูป)
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
         setSelectedFiles(files);
 
-        // สร้าง URL สำหรับ Preview
         const filePreviews = files.map(file => URL.createObjectURL(file));
         setPreviews(filePreviews);
     };
 
-    // ✅ แก้ไขส่วน handleRoomSubmit เพื่อป้องกัน Error 500 (แก้ชื่อ field เป็น room_image)
     const handleRoomSubmit = async (e) => {
         e.preventDefault();
         
-        // ใช้ FormData จาก Form โดยตรง
         const formData = new FormData(e.target);
         
-        // จัดการรูปภาพ: แก้ไขจาก 'room_images' เป็น 'room_image' ให้ตรงกับ Backend
+        // ✅ เพิ่มการจัดการ room_count
+        // (ปกติ input name="room_count" จะอยู่ใน formData อยู่แล้ว ไม่ต้องทำอะไรเพิ่ม)
+
         formData.delete('room_image'); 
         if (selectedFiles.length > 0) {
             selectedFiles.forEach((file) => {
@@ -98,7 +96,6 @@ const AdminManagement = () => {
                 body: formData 
             });
 
-            // ตรวจสอบก่อนว่า response เป็น JSON หรือไม่
             const contentType = res.headers.get("content-type");
             if (res.ok) {
                 Swal.fire('สำเร็จ', isEditing ? 'แก้ไขข้อมูลห้องพักสำเร็จ' : 'เพิ่มห้องพักสำเร็จ', 'success');
@@ -215,7 +212,13 @@ const AdminManagement = () => {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-xl font-extrabold text-gray-800">{room.name}</h3>
-                                        <p className="text-blue-600 font-bold">{Number(room.price).toLocaleString()} บาท/คืน</p>
+                                        <div className="flex gap-4 mt-1 text-gray-600 font-medium text-sm">
+                                            <span className="text-blue-600 font-bold text-lg">{Number(room.price).toLocaleString()} บาท/คืน</span>
+                                            {/* ✅ แสดงจำนวนห้อง */}
+                                            <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg border">
+                                                <Box size={14} className="text-gray-500"/> มีทั้งหมด {room.room_count || 15} ห้อง
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => { 
@@ -295,13 +298,27 @@ const AdminManagement = () => {
                             <button onClick={() => setShowRoomModal(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24}/></button>
                         </div>
                         <form onSubmit={handleRoomSubmit} className="space-y-5">
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label><input name="room_name" defaultValue={currentRoom?.name} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label><input name="price" type="number" defaultValue={currentRoom?.price} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label>
+                                <input name="room_name" defaultValue={currentRoom?.name} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label>
+                                    <input name="price" type="number" defaultValue={currentRoom?.price} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
+                                </div>
+                                
+                                {/* ✅ เพิ่มช่องกรอกจำนวนห้อง */}
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด</label>
+                                    <input name="room_count" type="number" defaultValue={currentRoom?.room_count || 15} min="1" className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
+                                </div>
+                            </div>
                             
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-2">รูปภาพห้องพัก (เลือกได้หลายรูป)</label>
                                 <div className="relative group">
-                                    {/* ✅ แก้ไข name="room_images" เป็น "room_image" */}
                                     <input type="file" name="room_image" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required={!isEditing} />
                                     <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-gray-50 group-hover:bg-blue-50 group-hover:border-blue-200 transition">
                                         <ImageIcon size={40} className="text-gray-400 group-hover:text-blue-400 mb-2" />
