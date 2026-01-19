@@ -123,6 +123,10 @@ const HomePage = ({ user }) => {
         showCloseButton: true,
         confirmButtonText: 'ถัดไป →',
         denyButtonText: '← ย้อนกลับ',
+        
+        // ✅ 1. เพิ่มบรรทัดนี้: เพื่อสลับปุ่ม ให้ย้อนกลับอยู่ซ้าย และถัดไปอยู่ขวา
+        reverseButtons: true, 
+        
         returnDirect: true,
         customClass: {
           image: 'rounded-lg max-h-[70vh] object-contain cursor-default',
@@ -513,6 +517,16 @@ const HomePage = ({ user }) => {
       </div>
 
       <style>{`
+        /* ✅ 2. เพิ่ม CSS นี้เพื่อบังคับตำแหน่งลูกศรให้ถูกต้อง */
+        .swiper-button-prev {
+          left: 10px !important;
+          right: auto !important;
+        }
+        .swiper-button-next {
+          right: 10px !important;
+          left: auto !important;
+        }
+
         .swiper-button-next, .swiper-button-prev {
           background: rgba(255, 255, 255, 0.2);
           backdrop-filter: blur(4px);
