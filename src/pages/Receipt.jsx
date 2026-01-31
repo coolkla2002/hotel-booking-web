@@ -53,13 +53,13 @@ const Receipt = () => {
       <div className="mb-6 flex gap-4 print:hidden">
         <button 
           onClick={handleDownloadPDF} // ใช้ฟังก์ชัน handleDownloadPDF
-          className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold flex items-center gap-2"
+          className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold flex items-center gap-2"
         >
-          📄 ดาวน์โหลดใบเสร็จ (PDF)
+          ดาวน์โหลดใบเสร็จ (PDF)
         </button>
         <button 
           onClick={() => navigate(-1)}
-          className="bg-gray-500 text-white px-6 py-2 rounded shadow hover:bg-gray-600"
+          className="bg-red-500 text-white px-6 py-2 rounded shadow hover:bg-gray-600"
         >
           ย้อนกลับ
         </button>

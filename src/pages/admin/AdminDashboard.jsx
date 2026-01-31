@@ -345,7 +345,7 @@ const AdminDashboard = () => {
 </td>
 </td>
                                         <td className="p-3 text-center">
-                                            <button onClick={() => navigate('/receipt', { state: { booking: item } })} className="text-purple-600 hover:text-purple-900 text-xs font-bold border border-purple-200 px-2 py-1 rounded bg-purple-50 hover:bg-purple-100 transition-colors">📄 ใบเสร็จ</button>
+                                            <button onClick={() => navigate('/receipt', { state: { booking: item } })} className="text-blue-600 hover:text-purple-900 text-xs font-bold border border-purple-200 px-2 py-1 rounded bg-blue-50 hover:bg-purple-100 transition-colors">📄 ใบเสร็จ</button>
                                         </td>
                                         <td className="p-3">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${item.status === 'pending_reschedule' || item.status === 'pending_cancel' ? 'bg-orange-100 text-orange-800' : item.status === 'approved' || item.status === 'upcoming' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -358,19 +358,19 @@ const AdminDashboard = () => {
                                                 {item.status === 'pending' && (
                                                     <div className="flex gap-1">
                                                         <button onClick={() => handleUpdateStatus(item.id, 'approved')} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600">อนุมัติ</button>
-                                                        <button onClick={() => handleUpdateStatus(item.id, 'rejected')} className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600">ปฏิเสธ</button>
+                                                        <button onClick={() => handleUpdateStatus(item.id, 'rejected')} className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600">ปฏิเสธ</button>
                                                     </div>
                                                 )}
 
                                                 {item.status === 'pending_cancel' && (
                                                     <div className="flex flex-col gap-1 w-full">
-                                                        <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-red-700">ยืนยันคืนเงินแล้ว</button>
-                                                        <button onClick={() => handleUpdateStatus(item.id, 'upcoming')} className="bg-gray-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ปฏิเสธยกเลิก</button>
+                                                        <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-gray-700">ยืนยันคืนเงินแล้ว</button>
+                                                        <button onClick={() => handleUpdateStatus(item.id, 'upcoming')} className="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ปฏิเสธยกเลิก</button>
                                                     </div>
                                                 )}
 
                                                 {(item.status === 'approved' || item.status === 'upcoming') && (
-                                                    <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-gray-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ยกเลิกการจอง</button>
+                                                    <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ยกเลิกการจอง</button>
                                                 )}
                                             </div>
                                         </td>
@@ -486,8 +486,8 @@ const AdminDashboard = () => {
                                         <div className="flex flex-col items-end gap-2 min-w-[180px]">
                                             <p className="font-bold text-red-600 text-lg">ยอดคืน: {Number(req.price).toLocaleString()} ฿</p>
                                             <div className="flex gap-2">
-                                                <button onClick={() => handleUpdateStatus(req.id, 'cancelled')} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-bold shadow">💰 ยืนยันคืนเงินแล้ว</button>
-                                                <button onClick={() => handleUpdateStatus(req.id, 'upcoming')} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold">ปฏิเสธ</button>
+                                                <button onClick={() => handleUpdateStatus(req.id, 'cancelled')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow">💰 ยืนยันคืนเงินแล้ว</button>
+                                                <button onClick={() => handleUpdateStatus(req.id, 'upcoming')} className="bg-red-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold">ปฏิเสธ</button>
                                             </div>
                                         </div>
                                     </div>

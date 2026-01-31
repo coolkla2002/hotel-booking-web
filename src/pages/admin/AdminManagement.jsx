@@ -282,8 +282,8 @@ const AdminManagement = () => {
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">อีเมล</label><input name="email" type="email" defaultValue={currentUser?.email} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
                             <div><label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทรศัพท์</label><input name="phone" defaultValue={formatPhoneNumber(currentUser?.phone)} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
                             <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setShowUserModal(false)} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
-                                <button type="submit" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">บันทึกการแก้ไข</button>
+                                <button type="button" onClick={() => setShowUserModal(false)} className="px-6 py-2 text-red-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
+                                <button type="submit" className="px-8 py-2 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">บันทึกการแก้ไข</button>
                             </div>
                         </form>
                     </div>
@@ -338,8 +338,8 @@ const AdminManagement = () => {
                             )}
 
                             <div className="flex gap-3 justify-end pt-4 border-t">
-                                <button type="button" onClick={() => setShowRoomModal(false)} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
-                                <button type="submit" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">
+                                <button type="button" onClick={() => setShowRoomModal(false)} className="px-6 py-2 text-red-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
+                                <button type="submit" className="px-8 py-2 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">
                                     {isEditing ? 'บันทึกการแก้ไข' : 'ยืนยัน'}
                                 </button>
                             </div>

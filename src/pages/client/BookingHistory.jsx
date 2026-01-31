@@ -62,7 +62,10 @@ const BookingHistory = ({ user }) => {
       showCancelButton: true,
       confirmButtonText: 'ส่งคำขอยกเลิก',
       cancelButtonText: 'ปิด',
-      confirmButtonColor: '#d33',
+      customClass: {
+        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all',
+        cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all'
+      },
       preConfirm: () => {
         const details = document.getElementById('swal-refund-details').value;
         const file = document.getElementById('swal-refund-file').files[0];
@@ -156,6 +159,10 @@ const BookingHistory = ({ user }) => {
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'ส่งคำขอเลื่อนวัน',
+      customClass: {
+        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-colors',
+        cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-colors'
+      },
       didOpen: () => {
         const checkInInput = document.getElementById('swal-new-checkin');
         const checkOutInput = document.getElementById('swal-new-checkout');

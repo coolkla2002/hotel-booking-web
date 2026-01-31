@@ -184,7 +184,7 @@ const ManagerDashboard = () => {
                                                 {hasProof ? (
                                                     <button 
                                                         onClick={() => navigate('/receipt', { state: { booking: b } })} 
-                                                        className="bg-purple-600 text-white px-3 py-1 rounded shadow hover:bg-purple-700 transition-colors flex items-center gap-1 mx-auto"
+                                                        className="bg-blue-600 text-white px-3 py-1 rounded shadow hover:bg-gray-700 transition-colors flex items-center gap-1 mx-auto"
                                                     >
                                                         📄 ใบเสร็จ
                                                     </button>

@@ -152,7 +152,11 @@ const HomePage = ({ user }) => {
         text: 'คุณต้องล็อกอินหรือสมัครสมาชิกก่อนทำการจองห้องพัก',
         showCancelButton: true,
         confirmButtonText: 'เข้าสู่ระบบ',
-        cancelButtonText: 'ยกเลิก'
+        cancelButtonText: 'ยกเลิก',
+        customClass: {
+          confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all',
+          cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all'
+        },
       }).then((result) => {
         if (result.isConfirmed) navigate('/login');
       });
@@ -198,7 +202,7 @@ const HomePage = ({ user }) => {
     console.log("Daily Booked Map:", dailyBookedMap);
 
     const { value: bookingData } = await Swal.fire({
-      title: `จองห้องพัก: ${roomType} 📅`,
+      title: `จองห้องพัก: ${roomType} `,
       html: `
         <div class="flex flex-col gap-4 text-left">
             <div>
@@ -227,6 +231,10 @@ const HomePage = ({ user }) => {
       showCancelButton: true,
       confirmButtonText: 'ถัดไป',
       cancelButtonText: 'ยกเลิก',
+      customClass: {
+        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all',
+        cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all'
+      },
       didOpen: () => {
         const checkInInput = document.getElementById('swal-checkin');
         const checkOutInput = document.getElementById('swal-checkout');
@@ -353,6 +361,10 @@ const HomePage = ({ user }) => {
         showCancelButton: true,
         confirmButtonText: 'ยืนยันชำระเงิน',
         cancelButtonText: 'ยกเลิก',
+        customClass: {
+          confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all',
+          cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all'
+        },
         didOpen: () => {
             const select = document.getElementById('swal-payment-method');
             const bankInfo = document.getElementById('info-bank');
@@ -385,8 +397,12 @@ const HomePage = ({ user }) => {
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: '✅ ยืนยัน',
+      confirmButtonText: 'ยืนยัน',
       cancelButtonText: 'แก้ไข',
+      customClass: {
+        confirmButton: 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all',
+        cancelButton: 'bg-red-500 hover:bg-slate-600 text-white font-bold py-2 px-6 rounded-lg mx-2 transition-all'
+      },
     });
 
     if (result.isConfirmed) {

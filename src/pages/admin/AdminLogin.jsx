@@ -91,7 +91,7 @@ const AdminLogin = ({ onLogin }) => {
             />
           </div>
 
-          <button onClick={handleSubmit} className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2 rounded font-bold mt-4 transition-colors">
+          <button onClick={handleSubmit} className="w-full bg-green-800 hover:bg-green-900 text-white py-2 rounded font-bold mt-4 transition-colors">
             เข้าสู่ระบบจัดการ
           </button>
           
