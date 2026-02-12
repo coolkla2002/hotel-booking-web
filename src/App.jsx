@@ -16,7 +16,7 @@ import EditProfile from './pages/client/EditProfile';
 import Register from './pages/Register';
 import Login from './pages/Login'; 
 
-// --- ส่วนที่ 1: Protected Routes (แก้ใหม่: ตัดวงจรการเด้ง) ---
+// --- ส่วนที่ 1: Protected Routes ---
 
 // 1.1 สำหรับ Admin เท่านั้น
 const AdminRoute = ({ children }) => {
@@ -29,9 +29,7 @@ const AdminRoute = ({ children }) => {
   try {
     const user = JSON.parse(userStr);
     if (user.role !== 'admin') {
-      // ❌ เดิม: return <Navigate to="/" replace />; (นี่คือตัวทำเด้งวน)
-      // ✅ ใหม่: ถ้าไม่ใช่ Admin อย่าส่งไปหน้า Home ให้ส่งไปหน้า Login หรือแจ้งเตือนแทน
-      localStorage.removeItem('user'); // ลบ User ผีออก
+      localStorage.removeItem('user'); 
       return <Navigate to="/admin-login" replace />;
     }
     return children;
@@ -51,10 +49,7 @@ const ManagerRoute = ({ children }) => {
 
   try {
     const user = JSON.parse(userStr);
-    // อนุญาตทั้ง manager และ admin
     if (user.role !== 'manager' && user.role !== 'admin') {
-      // ❌ เดิม: return <Navigate to="/" replace />;
-      // ✅ ใหม่: ตัดวงจรเช่นกัน
       localStorage.removeItem('user');
       return <Navigate to="/admin-login" replace />;
     }
@@ -66,7 +61,6 @@ const ManagerRoute = ({ children }) => {
 };
 
 // --- ส่วน Layout หลัก (Navbar) ---
-// (ส่วนนี้เหมือนเดิม ไม่ต้องแก้)
 const AppLayout = ({ children, user, onLogout }) => {
   const location = useLocation();
   const isActive = (path) => location.pathname === path ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50";
@@ -85,7 +79,6 @@ const AppLayout = ({ children, user, onLogout }) => {
         <div className="flex items-center gap-6">
            <Link to="/" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>หน้าหลัก</Link>
            {user && <Link to="/history" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/history' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>ประวัติการจอง</Link>}
-           <Link to="/contact" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/contact' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>ติดต่อเรา</Link>
         </div>
         <div className="flex items-center gap-4">
           {user ? (
@@ -105,7 +98,6 @@ const AppLayout = ({ children, user, onLogout }) => {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 pb-safe z-50">
         <Link to="/" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/')}`}><Home className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">หน้าหลัก</span></Link>
         {user && <Link to="/history" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/history')}`}><FileText className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">ประวัติ</span></Link>}
-        <Link to="/contact" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/contact')}`}><Phone className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">ติดต่อ</span></Link>
         {user ? <Link to="/profile" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/profile')}`}><UserCog className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">โปรไฟล์</span></Link> : <Link to="/login" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/login')}`}><LogIn className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">เข้าสู่ระบบ</span></Link>}
       </div>
     </div>
@@ -114,7 +106,6 @@ const AppLayout = ({ children, user, onLogout }) => {
 
 // --- Main App Component ---
 function App() {
-  // ✅ ใช้ Logic เดิมที่ผมให้ไป (ถูกต้องแล้ว)
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
     if (savedUser) {
@@ -172,7 +163,7 @@ function App() {
             ) : <Navigate to="/login" />
         } />
 
-<Route path="/admin-management" element={<AdminManagement />} />
+        <Route path="/admin-management" element={<AdminManagement />} />
 
         <Route path="/profile" element={
             user ? (
@@ -180,22 +171,11 @@ function App() {
             ) : <Navigate to="/login" />
         } />
 
-        <Route path="/contact" element={<AppLayout user={user} onLogout={handleLogout}><ContactPage /></AppLayout>} />
+        {/* ✅ เพิ่มตัวดักจับหน้าเว็บที่ไม่เจอ (Error 404) ให้เด้งกลับหน้าแรกเสมอ */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
 }
-
-const ContactPage = () => (
-    <div className="bg-white p-8 rounded-2xl shadow-sm text-center">
-        <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"><Phone className="w-8 h-8 text-blue-600" /></div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">ติดต่อเรา</h2>
-        <p className="text-gray-600 mb-6">มีข้อสงสัยหรือต้องการความช่วยเหลือ? ติดต่อเราได้ตลอด 24 ชม.</p>
-        <div className="space-y-4">
-            <div className="flex items-center justify-center gap-3 text-lg font-medium text-gray-700"><MapPin className="w-5 h-5 text-red-500" /> 888 ถ.มิตรภาพ อ.เมือง จ.นครราชสีมา</div>
-            <div className="flex items-center justify-center gap-3 text-lg font-medium text-gray-700"><Phone className="w-5 h-5 text-green-500" /> 098-765-4321</div>
-        </div>
-    </div>
-);
 
 export default App;

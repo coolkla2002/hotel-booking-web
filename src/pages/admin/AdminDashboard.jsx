@@ -1,10 +1,10 @@
 // client/src/pages/admin/AdminDashboard.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from 'recharts';
-import { ImageIcon, Search, FileText, XCircle } from 'lucide-react';
+import { ImageIcon, Search, FileText, XCircle, ShieldCheck } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import API_URL from "/src/config";
@@ -12,13 +12,21 @@ import API_URL from "/src/config";
 const AdminDashboard = () => {
     const [bookings, setBookings] = useState([]);
     const [rescheduleRequests, setRescheduleRequests] = useState([]);
-    const [activeTab, setActiveTab] = useState('dashboard');
+    
+    const navigate = useNavigate();
+    const location = useLocation(); 
+    const reportRef = useRef(null);
+
+    const getTabFromUrl = () => {
+        const params = new URLSearchParams(location.search);
+        return params.get('tab') || 'dashboard';
+    };
+    
+    const activeTab = getTabFromUrl();
+
     const [selectedMonth, setSelectedMonth] = useState('all');
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [searchTerm, setSearchTerm] = useState('');
-
-    const navigate = useNavigate();
-    const reportRef = useRef(null);
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF'];
     const months = [
@@ -28,31 +36,89 @@ const AdminDashboard = () => {
         { value: '10', label: 'ตุลาคม' }, { value: '11', label: 'พฤศจิกายน' }, { value: '12', label: 'ธันวาคม' }
     ];
 
-    useEffect(() => {
-        const userStr = localStorage.getItem('user');
-        if (!userStr) { navigate('/login'); return; }
-        const user = JSON.parse(userStr);
-        if (user.role !== 'admin') {
-            Swal.fire('เข้าถึงไม่ได้', 'หน้านี้สำหรับผู้ดูแลระบบเท่านั้น', 'error');
-            navigate('/');
-            return;
+    const handleTabChange = (tabName) => {
+        if (activeTab !== tabName) {
+            navigate(`?tab=${tabName}`); 
+            window.scrollTo(0, 0); 
         }
-        fetchBookings();
-        fetchRescheduleRequests();
-    }, [navigate]);
+    };
 
-    const fetchBookings = () => {
+    const fetchBookings = useCallback(() => {
         fetch(`${API_URL}/bookings`)
             .then(res => res.json())
             .then(data => setBookings(data))
             .catch(err => console.error(err));
-    };
+    }, []);
 
-    const fetchRescheduleRequests = () => {
+    const fetchRescheduleRequests = useCallback(() => {
         fetch(`${API_URL}/admin/reschedule-requests`)
             .then(res => res.json())
             .then(data => setRescheduleRequests(data))
             .catch(err => console.error("Error fetching requests:", err));
+    }, []);
+
+    useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (!userStr) { 
+            navigate('/login', { replace: true }); 
+            return; 
+        }
+        try {
+            const user = JSON.parse(userStr);
+            if (user.role !== 'admin') {
+                Swal.fire({ icon: 'error', title: 'เข้าถึงไม่ได้', text: 'สำหรับ Admin เท่านั้น', timer: 1500, showConfirmButton: false })
+                    .then(() => navigate('/', { replace: true }));
+            }
+        } catch (e) {
+            localStorage.removeItem('user');
+            navigate('/login', { replace: true });
+        }
+    }, [navigate]);
+
+    useEffect(() => {
+        if (activeTab === 'bookings' || activeTab === 'dashboard' || activeTab === 'report') {
+            fetchBookings();
+        }
+        if (activeTab === 'requests' || activeTab === 'dashboard') {
+            fetchRescheduleRequests();
+        }
+        if (activeTab === 'cancel_requests') {
+            fetchBookings(); 
+        }
+    }, [activeTab, fetchBookings, fetchRescheduleRequests]);
+
+    const handleRescheduleAction = async (requestId, action) => {
+        const actionText = action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ';
+        const result = await Swal.fire({
+            title: `ยืนยันการ${actionText}?`,
+            text: action === 'approve' ? 'วันเข้าพักจะถูกเปลี่ยนทันที' : 'คำขอจะถูกยกเลิกและกลับเป็นวันเดิม',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยัน',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: action === 'approve' ? '#10B981' : '#d33'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                const response = await fetch(`${API_URL}/admin/approve-reschedule`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: requestId, action: action })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    Swal.fire('สำเร็จ', data.message, 'success');
+                    fetchRescheduleRequests();
+                    fetchBookings();
+                } else {
+                    Swal.fire('ผิดพลาด', data.message, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+            }
+        }
     };
 
     const handleLogout = () => {
@@ -61,7 +127,7 @@ const AdminDashboard = () => {
         }).then((result) => {
             if (result.isConfirmed) {
                 localStorage.removeItem('user');
-                navigate('/');
+                navigate('/', { replace: true });
                 window.location.reload();
             }
         });
@@ -118,31 +184,6 @@ const AdminDashboard = () => {
         });
     };
 
-    const handleRescheduleAction = (bookingId, action) => {
-        const actionText = action === 'approve' ? 'อนุมัติ' : 'ปฏิเสธ';
-        Swal.fire({
-            title: `ยืนยันการ${actionText}?`,
-            text: action === 'approve' ? 'วันเข้าพักจะถูกเปลี่ยนทันที' : 'คำขอจะถูกยกเลิกและกลับเป็นวันเดิม',
-            icon: 'warning', showCancelButton: true, confirmButtonText: 'ยืนยัน', cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: action === 'approve' ? '#28a745' : '#d33'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                fetch(`${API_URL}/admin/approve-reschedule`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ booking_id: bookingId, action })
-                }).then(res => res.json()).then(data => {
-                    if (data.success) {
-                        Swal.fire('สำเร็จ', data.message, 'success');
-                        fetchRescheduleRequests();
-                        fetchBookings();
-                    } else {
-                        Swal.fire('ผิดพลาด', data.message, 'error');
-                    }
-                }).catch(err => console.error(err));
-            }
-        });
-    };
-
     const getChartData = () => {
         const data = Array.from({ length: 12 }, (_, i) => ({ name: new Date(0, i).toLocaleDateString('th-TH', { month: 'short' }), income: 0, bookings: 0 }));
         bookings.forEach(b => {
@@ -161,8 +202,6 @@ const AdminDashboard = () => {
     const dashboardChartData = getChartData();
     const totalIncomeYear = dashboardChartData.reduce((acc, curr) => acc + curr.income, 0);
     const pendingCount = bookings.filter(b => b.status === 'pending').length;
-
-    // ✅ กรองคำขอยกเลิก
     const cancelRequests = bookings.filter(b => b.status === 'pending_cancel');
 
     const getMonthlyData = () => {
@@ -228,16 +267,15 @@ const AdminDashboard = () => {
                     <div><h1 className="text-xl font-bold text-gray-800">Admin Panel</h1><p className="text-xs text-gray-500">ระบบจัดการหลังบ้าน</p></div>
                 </div>
                 <div className="flex gap-2 items-center flex-wrap">
-                    <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📈 ภาพรวม</button>
-                    <button onClick={() => setActiveTab('bookings')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📝 จัดการการจอง</button>
-                    <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'requests' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => handleTabChange('dashboard')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📈 ภาพรวม</button>
+                    <button onClick={() => handleTabChange('bookings')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'bookings' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📝 จัดการการจอง</button>
+                    <button onClick={() => handleTabChange('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'requests' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'text-gray-600 hover:bg-gray-100'}`}>
                         📅 เลื่อนวัน {rescheduleRequests.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{rescheduleRequests.length}</span>}
                     </button>
-                    {/* ✅ เพิ่มปุ่ม Tab ยกเลิก */}
-                    <button onClick={() => setActiveTab('cancel_requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'cancel_requests' ? 'bg-red-50 text-red-700 border border-red-200' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => handleTabChange('cancel_requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2 ${activeTab === 'cancel_requests' ? 'bg-red-50 text-red-700 border border-red-200' : 'text-gray-600 hover:bg-gray-100'}`}>
                         ❌ คำขอยกเลิก {cancelRequests.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{cancelRequests.length}</span>}
                     </button>
-                    <button onClick={() => setActiveTab('report')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'report' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📄 รายงาน</button>
+                    <button onClick={() => handleTabChange('report')} className={`px-4 py-2 rounded-lg text-sm font-bold transition ${activeTab === 'report' ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-100'}`}>📄 รายงาน</button>
                     <button onClick={() => navigate('/admin-management')} className="px-4 py-2 rounded-lg text-sm font-bold transition text-gray-600 hover:bg-gray-100 flex items-center gap-2">⚙️ จัดการข้อมูล</button>
                     <div className="h-6 w-px bg-gray-300 mx-2"></div>
                     <button onClick={handleLogout} className="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold">Logout</button>
@@ -295,64 +333,68 @@ const AdminDashboard = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-100 text-gray-600 border-b">
-                                    <th className="p-3">ID</th><th className="p-3">ลูกค้า (User ID)</th><th className="p-3">ห้องพัก</th><th className="p-3">วันเข้า-ออก</th><th className="p-3">ราคา</th><th className="p-3">หลักฐาน</th><th className="p-3 text-center">ใบเสร็จ</th><th className="p-3">สถานะ</th><th className="p-3 text-center">จัดการ</th>
+                                    <th className="p-3">ID</th><th className="p-3">ลูกค้า (User ID)</th><th className="p-3">ห้องพัก</th><th className="p-3">วันเข้า-ออก</th><th className="p-3">ราคา</th><th className="p-3 text-center">หลักฐาน</th><th className="p-3 text-center">ใบเสร็จ</th><th className="p-3">สถานะ</th><th className="p-3 text-center">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {bookings.filter(b => b.user_id.toString().includes(searchTerm)).map((item) => (
+                                {bookings
+                                    .filter(b => b.user_id.toString().includes(searchTerm))
+                                    .sort((a, b) => {
+                                        const priority = {
+                                            'pending': 1, 'pending_reschedule': 1, 'pending_cancel': 1,
+                                            'approved': 2, 'upcoming': 2, 'completed': 2, 'cancelled': 2, 'rejected': 2
+                                        };
+                                        const priorityA = priority[a.status] || 2;
+                                        const priorityB = priority[b.status] || 2;
+                                        if (priorityA !== priorityB) return priorityA - priorityB;
+                                        return b.id - a.id;
+                                    })
+                                    .map((item) => (
                                     <tr key={item.id} className="border-b hover:bg-gray-50">
-                                        <td className="p-3 text-gray-500">#{item.id}</td>
+                                        {/* ✅ แก้ไข: แสดง ID 3 หลัก */}
+                                        <td className="p-3 text-gray-500">#{String(item.id).padStart(3, '0')}</td>
                                         <td className="p-3 font-bold text-blue-900">{item.user_id}</td>
-                                        <td className="p-3">{item.room_name}</td>
+                                        <td className="p-3">{item.room_name} <br/><span className="text-xs text-gray-500">({item.room_count || 1} ห้อง)</span></td>
                                         <td className="p-3 text-sm">{new Date(item.check_in_date).toLocaleDateString('th-TH')} <br /> ถึง {new Date(item.check_out_date).toLocaleDateString('th-TH')}</td>
                                         <td className="p-3 font-bold">{Number(item.price).toLocaleString()}</td>
+                                        
                                         <td className="p-3">
-                                        <td className="p-3">
-    <div className="flex flex-col gap-2 items-center">
-        {/* แสดงกลุ่มปุ่มสลิปถ้ามีการจ่ายเงิน */}
-        {(item.slip_image || item.reschedule_slip) && (
-            <div className="flex flex-col gap-1 w-full">
-                {item.slip_image && (
-                    <button 
-                        onClick={() => handleViewImage(item.slip_image)} 
-                        className="w-full text-blue-600 hover:text-blue-900 text-[10px] font-bold border border-blue-200 px-2 py-1 rounded bg-blue-50 transition-colors flex items-center justify-center gap-1"
-                    >
-                        <ImageIcon size={10} /> สลิปเดิม
-                    </button>
-                )}
-                {item.reschedule_slip && (
-                    <button 
-                        onClick={() => handleViewImage(item.reschedule_slip)} 
-                        className="w-full text-orange-600 hover:text-orange-900 text-[10px] font-bold border border-orange-200 px-2 py-1 rounded bg-orange-50 transition-colors flex items-center justify-center gap-1"
-                    >
-                        <ImageIcon size={10} /> สลิปใหม่
-                    </button>
-                )}
-            </div>
-        )}
+                                            <div className="flex flex-col gap-2 items-center">
+                                                {(item.slip_image || item.payment_slip) && (
+                                                    <button onClick={() => handleViewImage(item.slip_image || item.payment_slip)} className="w-full text-blue-600 hover:text-blue-900 text-[10px] font-bold border border-blue-200 px-2 py-1 rounded bg-blue-50 transition-colors flex items-center justify-center gap-1">
+                                                        <ImageIcon size={10} /> สลิปชำระ
+                                                    </button>
+                                                )}
+                                                {item.user_type === 'official' && item.gov_card_image && (
+                                                    <button onClick={() => handleViewImage(item.gov_card_image)} className="w-full text-red-600 hover:text-red-900 text-[10px] font-bold border border-red-200 px-2 py-1 rounded bg-red-50 transition-colors flex items-center justify-center gap-1">
+                                                        <ShieldCheck size={10} /> บัตรข้าราชการ
+                                                    </button>
+                                                )}
+                                                {item.refund_image && (
+                                                    <button onClick={() => handleViewImage(item.refund_image)} className="w-full text-red-600 hover:text-red-900 text-[10px] font-bold border border-red-200 px-2 py-1 rounded bg-red-50 transition-colors flex items-center justify-center gap-1">
+                                                        <ImageIcon size={10} /> QR คืนเงิน
+                                                    </button>
+                                                )}
+                                                {!item.slip_image && !item.payment_slip && !item.refund_image && !item.gov_card_image && <span className="text-gray-400 text-xs">-</span>}
+                                            </div>
+                                        </td>
 
-        {item.refund_image && (
-            <button 
-                onClick={() => handleViewImage(item.refund_image)} 
-                className="w-full text-red-600 hover:text-red-900 text-[10px] font-bold border border-red-200 px-2 py-1 rounded bg-red-50 transition-colors flex items-center justify-center gap-1"
-            >
-                <ImageIcon size={10} /> QR คืนเงิน
-            </button>
-        )}
-        
-        {!item.slip_image && !item.reschedule_slip && !item.refund_image && <span className="text-gray-400 text-xs">-</span>}
-    </div>
-</td>
-</td>
                                         <td className="p-3 text-center">
                                             <button onClick={() => navigate('/receipt', { state: { booking: item } })} className="text-blue-600 hover:text-purple-900 text-xs font-bold border border-purple-200 px-2 py-1 rounded bg-blue-50 hover:bg-purple-100 transition-colors">📄 ใบเสร็จ</button>
                                         </td>
+
                                         <td className="p-3">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.status === 'pending_reschedule' || item.status === 'pending_cancel' ? 'bg-orange-100 text-orange-800' : item.status === 'approved' || item.status === 'upcoming' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {item.status.toUpperCase()}
+                                            <span className={`px-2 py-1 rounded text-xs font-bold border ${
+                                                item.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                                item.status === 'approved' || item.status === 'upcoming' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                item.status === 'pending_reschedule' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                item.status === 'pending_cancel' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                'bg-red-50 text-red-700 border-red-200'
+                                            }`}>
+                                                {item.status === 'pending' ? '⏳ รอตรวจสอบ' : item.status === 'approved' || item.status === 'upcoming' ? '✅ ยืนยันแล้ว' : item.status === 'pending_reschedule' ? '📅 รออนุมัติเลื่อน' : item.status === 'pending_cancel' ? '🚫 รอยืนยันยกเลิก' : item.status === 'cancelled' ? '❌ ยกเลิกแล้ว' : item.status === 'rejected' ? '❌ ปฏิเสธ' : item.status.toUpperCase()}
                                             </span>
-                                            {item.status === 'pending_cancel' && <p className="text-[10px] text-red-600 mt-1 font-bold">*รอยืนยันคืนเงิน</p>}
                                         </td>
+
                                         <td className="p-3 text-center">
                                             <div className="flex flex-col gap-2 justify-center items-center">
                                                 {item.status === 'pending' && (
@@ -361,14 +403,12 @@ const AdminDashboard = () => {
                                                         <button onClick={() => handleUpdateStatus(item.id, 'rejected')} className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600">ปฏิเสธ</button>
                                                     </div>
                                                 )}
-
                                                 {item.status === 'pending_cancel' && (
                                                     <div className="flex flex-col gap-1 w-full">
                                                         <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold hover:bg-gray-700">ยืนยันคืนเงินแล้ว</button>
                                                         <button onClick={() => handleUpdateStatus(item.id, 'upcoming')} className="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ปฏิเสธยกเลิก</button>
                                                     </div>
                                                 )}
-
                                                 {(item.status === 'approved' || item.status === 'upcoming') && (
                                                     <button onClick={() => handleUpdateStatus(item.id, 'cancelled')} className="bg-red-400 text-white px-2 py-1 rounded text-xs hover:bg-gray-500">ยกเลิกการจอง</button>
                                                 )}
@@ -381,117 +421,67 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-{activeTab === 'requests' && (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-        <h2 className="text-xl font-bold mb-4 text-orange-700 flex items-center gap-2">
-            📅 รายการขอเลื่อนวันเข้าพัก 
-            <button onClick={fetchRescheduleRequests} className="text-sm bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200">↻ รีโหลด</button>
-        </h2>
-        {rescheduleRequests.length === 0 ? (
-            <div className="text-center p-10 text-gray-400 border-2 border-dashed rounded-lg">✅ ไม่มีคำขอเลื่อนวันใหม่ในขณะนี้</div>
-        ) : (
-            <div className="grid gap-4">
-                {rescheduleRequests.map((req) => (
-                    <div key={req.id} className="bg-white border-l-4 border-orange-400 shadow p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="flex-1">
-                            <h3 className="font-bold text-lg text-gray-800">{req.room_name} <span className="text-sm font-normal text-gray-500">(Booking #{req.id})</span></h3>
-                            <p className="text-sm text-gray-600">ผู้จอง: {req.username || req.user_id}</p>
-                        </div>
-                        <div className="flex-2 flex items-center gap-3 bg-gray-50 p-3 rounded-lg border">
-                            <div className="text-center">
-                                <p className="text-xs font-bold text-gray-400 uppercase">วันเดิม</p>
-                                <p className="text-sm line-through text-red-400">{new Date(req.check_in_date).toLocaleDateString('th-TH')}</p>
-                                <p className="text-xs text-gray-400">ถึง {new Date(req.check_out_date).toLocaleDateString('th-TH')}</p>
+                {activeTab === 'requests' && (
+                    <div className="bg-white rounded-xl shadow-lg p-6">
+                        <h2 className="text-xl font-bold mb-4 text-orange-700 flex items-center gap-2">📅 รายการขอเลื่อนวันเข้าพัก</h2>
+                        {rescheduleRequests.length === 0 ? (
+                            <div className="text-center p-10 text-gray-400 border-2 border-dashed rounded-lg">✅ ไม่มีคำขอเลื่อนวันใหม่ในขณะนี้</div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {rescheduleRequests.map((req) => (
+                                    <div key={req.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                {/* ✅ แก้ไข: แสดง ID 3 หลัก */}
+                                                <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded">ID: #{String(req.id).padStart(3, '0')}</span>
+                                                <h3 className="font-bold text-gray-800">{req.room_name}</h3>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                                <div className="text-gray-500"><p>วันเดิม: <span className="text-gray-900 font-medium">{new Date(req.check_in_date).toLocaleDateString('th-TH')}</span></p><p>วันใหม่: <span className="text-blue-600 font-bold">{new Date(req.request_check_in).toLocaleDateString('th-TH')}</span></p></div>
+                                                <div className="text-gray-500"><p>ราคา: <span className="text-gray-900 font-medium">{Number(req.price).toLocaleString()} ฿</span></p></div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2 min-w-[250px] bg-amber-50 p-4 rounded-xl border border-amber-100">
+                                            <p className="text-xs font-bold text-amber-600 uppercase flex items-center gap-1"><FileText size={14} /> เหตุผลจากลูกค้า</p>
+                                            <p className="text-sm text-amber-900 italic">"{req.reschedule_reason || req.reason || 'ไม่ได้ระบุเหตุผล'}"</p>
+                                        </div>
+                                        <div className="flex gap-2 shrink-0">
+                                            <button onClick={() => handleRescheduleAction(req.id, 'approve')} className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-sm transition-all">อนุมัติ</button>
+                                            <button onClick={() => handleRescheduleAction(req.id, 'reject')} className="bg-red-500 hover:bg-red-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow-sm transition-all">ปฏิเสธ</button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div className="text-gray-400">➡️</div>
-                            <div className="text-center">
-                                <p className="text-xs font-bold text-green-600 uppercase">วันใหม่ที่ขอ</p>
-                                <p className="font-bold text-green-700">{new Date(req.request_check_in).toLocaleDateString('th-TH')}</p>
-                                <p className="text-xs text-green-600">ถึง {new Date(req.request_check_out).toLocaleDateString('th-TH')}</p>
-                            </div>
-                        </div>
-
-                        {/* ✅ เพิ่มส่วนแสดงสลิปโอนเงินเพิ่ม (กรณีมีการเพิ่มวัน) */}
-                        <div className="flex flex-col items-center gap-2 min-w-[120px]">
-                            <p className="text-xs font-bold text-gray-400 uppercase">หลักฐานโอนเพิ่ม</p>
-                            {req.reschedule_slip ? (
-                                <img 
-                                    src={`${API_URL}/uploads/${req.reschedule_slip}`} 
-                                    alt="Reschedule Slip" 
-                                    className="w-16 h-20 object-cover rounded border cursor-pointer hover:scale-110 transition-transform shadow-sm"
-                                    onClick={() => handleViewImage(req.reschedule_slip)}
-                                />
-                            ) : (
-                                <div className="text-gray-300 text-[10px] italic border rounded p-2 bg-gray-50">ไม่มีการโอนเพิ่ม</div>
-                            )}
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2 min-w-[150px]">
-    <div className="text-right text-sm">
-        <p className="text-gray-500">ราคาเดิม: {Number(req.price).toLocaleString()}</p>
-        <p className="font-bold text-blue-600">ใหม่: {Number(req.request_price || req.price).toLocaleString()} ฿</p>
-        
-        {/* เพิ่มปุ่มดูสลิปโอนเพิ่มในหน้าคำขอเลื่อนวัน */}
-        {req.reschedule_slip && (
-            <button 
-                onClick={() => handleViewImage(req.reschedule_slip)}
-                className="mt-1 text-orange-600 hover:underline text-xs font-bold flex items-center gap-1"
-            >
-                <ImageIcon size={14} /> ดูสลิปโอนเพิ่ม
-            </button>
-        )}
-    </div>
-    <div className="flex gap-2">
-        <button onClick={() => handleRescheduleAction(req.id, 'approve')} className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow">✅ อนุมัติ</button>
-        <button onClick={() => handleRescheduleAction(req.id, 'reject')} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-bold shadow">❌ ปฏิเสธ</button>
-    </div>
-</div>
+                        )}
                     </div>
-                ))}
-            </div>
-        )}
-    </div>
-)}
+                )}
 
-                {/* ✅ ส่วนจัดการคำขอยกเลิก (เพิ่มใหม่) */}
                 {activeTab === 'cancel_requests' && (
                     <div className="bg-white rounded-xl shadow-lg p-6">
-                        <h2 className="text-xl font-bold mb-4 text-red-700 flex items-center gap-2">❌ รายการขอแจ้งยกเลิกและคืนเงิน</h2>
+                        <h2 className="text-xl font-bold mb-4 text-red-700 flex items-center gap-2">❌ รายการขอแจ้งยกเลิกและคืนเงิน (คืน 20%)</h2>
                         {cancelRequests.length === 0 ? (
                             <div className="text-center p-10 text-gray-400 border-2 border-dashed rounded-lg">✅ ไม่มีคำขอยกเลิกในขณะนี้</div>
                         ) : (
                             <div className="grid gap-4">
-                                {cancelRequests.map((req) => (
-                                    <div key={req.id} className="bg-white border-l-4 border-red-500 shadow p-6 rounded-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                                        <div className="flex-1">
-                                            <h3 className="font-bold text-lg text-gray-800">{req.room_name} <span className="text-sm font-normal text-gray-500">(Booking #{req.id})</span></h3>
-                                            <p className="text-sm text-gray-600 font-bold text-blue-900">ผู้จอง (User ID): {req.user_id}</p>
-                                            <p className="text-xs text-gray-500 mt-1">วันที่จอง: {new Date(req.check_in_date).toLocaleDateString('th-TH')} - {new Date(req.check_out_date).toLocaleDateString('th-TH')}</p>
-                                        </div>
-                                        <div className="flex-1 bg-gray-50 p-3 rounded-lg border">
-                                            <p className="text-xs font-bold text-gray-400 uppercase mb-1">รายละเอียดบัญชี</p>
-                                            <p className="text-sm text-gray-700 whitespace-pre-wrap">{req.refund_details || 'รายละเอียดบัญชี'}</p>
-                                        </div>
-                                        <div className="flex flex-col items-center gap-2 min-w-[120px]">
-                                            <p className="text-xs font-bold text-gray-400 uppercase">QR CODE ของลูกค้า</p>
-                                            {req.refund_image ? (
-                                                <img 
-                                                    src={`${API_URL}/uploads/${req.refund_image}`} 
-                                                    alt="Refund QR" 
-                                                    className="w-16 h-16 object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
-                                                    onClick={() => handleViewImage(req.refund_image)}
-                                                />
-                                            ) : <span className="text-gray-300 text-xs italic">ไม่มีรูปภาพ</span>}
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2 min-w-[180px]">
-                                            <p className="font-bold text-red-600 text-lg">ยอดคืน: {Number(req.price).toLocaleString()} ฿</p>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleUpdateStatus(req.id, 'cancelled')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow">💰 ยืนยันคืนเงินแล้ว</button>
-                                                <button onClick={() => handleUpdateStatus(req.id, 'upcoming')} className="bg-red-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold">ปฏิเสธ</button>
+                                {cancelRequests.map((req) => {
+                                    const refundAmount = Number(req.price) * 0.20; 
+                                    return (
+                                        <div key={req.id} className="bg-white border-l-4 border-red-500 shadow p-6 rounded-lg flex flex-col md:flex-row items-start justify-between gap-6">
+                                            <div className="flex-1">
+                                                {/* ✅ แก้ไข: แสดง ID 3 หลัก */}
+                                                <h3 className="font-bold text-lg text-gray-800">{req.room_name} <span className="text-sm font-normal text-gray-500">(Booking #{String(req.id).padStart(3, '0')})</span></h3>
+                                                <p className="text-sm text-gray-600 font-bold text-blue-900">ผู้จอง (User ID): {req.user_id}</p>
+                                                <div className="mt-3"><button onClick={() => handleViewImage(req.slip_image || req.payment_slip)} className="flex items-center gap-1 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-all"><ImageIcon size={14} /> ดูใบเสร็จที่ลูกค้าจ่ายมา</button></div>
                                             </div>
+                                            <div className="flex-1 bg-red-50 p-3 rounded-lg border border-red-100">
+                                                <p className="text-xs font-bold text-red-500 uppercase mb-1">สาเหตุการยกเลิก</p><p className="text-sm text-gray-800 mb-3 italic">"{req.cancel_reason || req.reason || '-'}"</p>
+                                                <div className="border-t border-red-200 pt-2"><p className="text-xs font-bold text-gray-500 uppercase mb-1">รายละเอียดบัญชีรับเงินคืน</p><p className="text-sm text-gray-700 whitespace-pre-wrap">{req.refund_details || 'ไม่ได้ระบุ'}</p></div>
+                                            </div>
+                                            <div className="flex flex-col items-center gap-2 min-w-[100px]"><p className="text-xs font-bold text-gray-400 uppercase">QR รับเงิน</p>{req.refund_image ? (<img src={`${API_URL}/uploads/${req.refund_image}`} alt="Refund QR" className="w-20 h-20 object-cover rounded border cursor-pointer hover:scale-110 transition-transform bg-white" onClick={() => handleViewImage(req.refund_image)} />) : <span className="text-gray-300 text-xs italic">ไม่มีรูปภาพ</span>}</div>
+                                            <div className="flex flex-col items-end gap-2 min-w-[200px]"><div className="text-right"><p className="text-xs text-gray-500">ยอดชำระเต็ม: <span className="line-through">{Number(req.price).toLocaleString()}</span> ฿</p><p className="font-bold text-red-600 text-xl">ยอดคืน (20%): {refundAmount.toLocaleString()} ฿</p></div><div className="flex gap-2 mt-2"><button onClick={() => handleUpdateStatus(req.id, 'cancelled')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-bold shadow">💰 ยืนยันคืนเงินแล้ว</button><button onClick={() => handleUpdateStatus(req.id, 'upcoming')} className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded text-sm font-bold">ปฏิเสธ</button></div></div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -519,69 +509,26 @@ const AdminDashboard = () => {
                                 <p className="text-gray-500">RCBAT Hotel</p>
                                 <p className="text-sm text-gray-400 mt-2">วันที่ออกรายงาน: {new Date().toLocaleDateString('th-TH')}</p>
                             </div>
-
                             <div className="grid grid-cols-3 gap-6 mb-8">
                                 <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 text-center"><p className="text-blue-600 font-bold mb-2">รายได้รวม</p><h3 className="text-3xl font-bold text-slate-800">{totalRevenueReport.toLocaleString()} ฿</h3></div>
                                 <div className="bg-orange-50 p-6 rounded-lg border border-orange-100 text-center"><p className="text-orange-600 font-bold mb-2">จำนวนการจอง</p><h3 className="text-3xl font-bold text-slate-800">{totalBookingsCountReport} ครั้ง</h3></div>
                                 <div className="bg-purple-50 p-6 rounded-lg border border-purple-100 text-center"><p className="text-purple-600 font-bold mb-2">ราคาเฉลี่ย/ห้อง</p><h3 className="text-3xl font-bold text-slate-800">{averagePriceReport.toFixed(0).toLocaleString()} ฿</h3></div>
                             </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                                <div className="bg-white p-4 rounded-lg border border-gray-100">
-                                    <h3 className="text-lg font-bold mb-4 text-center">แนวโน้มรายได้รายเดือน</h3>
-                                    <div style={{ width: '100%', height: '350px' }}>
-                                        <ResponsiveContainer width="99%" height="100%"><BarChart data={getMonthlyData()}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis /><Tooltip /><Bar dataKey="income" fill="#4F46E5" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-4 rounded-lg border border-gray-100">
-                                    <h3 className="text-lg font-bold mb-4 text-center">สัดส่วนห้องพัก</h3>
-                                    <div style={{ width: '100%', height: '350px' }}>
-                                        <ResponsiveContainer width="99%" height="100%"><PieChart><Pie data={getRoomTypeData()} cx="50%" cy="50%" innerRadius={70} outerRadius={100} dataKey="value" label>{getRoomTypeData().map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}</Pie><Tooltip /><Legend verticalAlign="bottom" height={36} /></PieChart></ResponsiveContainer>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="mt-8 mb-8">
                                 <h3 className="text-lg font-bold mb-2 bg-slate-100 p-2 border-l-4 border-blue-500">รายละเอียดผู้จอง {selectedMonthLabel} ({filteredBookingsForReport.length} รายการ)</h3>
                                 <table className="w-full text-sm text-left text-gray-500 border">
-                                    <thead className="text-xs text-white uppercase bg-slate-600">
-                                        <tr>
-                                            <th className="px-4 py-3">วันที่เช็คอิน</th><th className="px-4 py-3">ชื่อผู้จอง</th><th className="px-4 py-3">ประเภทห้อง</th><th className="px-4 py-3 text-right">ราคา</th><th className="px-4 py-3 text-center">หลักฐาน</th><th className="px-4 py-3 text-center">ใบเสร็จ</th><th className="px-4 py-3 text-center">สถานะ</th>
-                                        </tr>
-                                    </thead>
+                                    <thead className="text-xs text-white uppercase bg-slate-600"><tr><th className="px-4 py-3">วันที่เช็คอิน</th><th className="px-4 py-3">ชื่อผู้จอง</th><th className="px-4 py-3 text-center">ประเภท</th><th className="px-4 py-3">ห้องพัก</th><th className="px-4 py-3 text-right">ราคา</th><th className="px-4 py-3 text-center">สถานะ</th></tr></thead>
                                     <tbody>
                                         {filteredBookingsForReport.map((b, index) => (
                                             <tr key={index} className="bg-white border-b hover:bg-gray-50">
                                                 <td className="px-4 py-2">{new Date(b.check_in_date).toLocaleDateString('th-TH')}</td>
                                                 <td className="px-4 py-2 font-semibold text-gray-900">{b.fullname || b.name || `User ID: ${b.user_id}`}</td>
+                                                <td className="px-4 py-2 text-center">{b.user_type === 'official' ? <span className="text-red-600 font-bold text-[10px] bg-red-50 px-2 py-1 rounded">ข้าราชการ</span> : <span className="text-gray-400 text-[10px]">ทั่วไป</span>}</td>
                                                 <td className="px-4 py-2">{b.room_name}</td>
-                                                <td className="px-4 py-2 text-right">{Number(b.price).toLocaleString()}</td>
-                                                <td className="px-4 py-2 text-center">
-                                                    {(b.slip_image || b.payment_image || b.image) ? (<button onClick={() => handleViewImage(b.slip_image || b.payment_image || b.image)} className="bg-blue-50 text-blue-600 p-2 rounded-full hover:bg-blue-100 transition-colors"><ImageIcon size={18} /></button>) : (<span className="text-gray-300">-</span>)}
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <button onClick={() => navigate('/receipt', { state: { booking: b } })} className="bg-purple-50 text-purple-600 p-2 rounded-full hover:bg-purple-100 transition-colors"><FileText size={18} /></button>
-                                                </td>
+                                                <td className="px-4 py-2 text-right font-bold">{Number(b.price).toLocaleString()}</td>
                                                 <td className="px-4 py-2 text-center"><span className={`px-2 py-1 rounded-full text-xs text-white ${b.status === 'approved' ? 'bg-green-500' : b.status === 'completed' ? 'bg-blue-500' : 'bg-yellow-500'}`}>{b.status}</span></td>
                                             </tr>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div className="mt-8">
-                                <h3 className="text-lg font-bold mb-2">ตารางสรุปรายได้ (รายปี)</h3>
-                                <table className="w-full text-sm text-left text-gray-500 border">
-                                    <thead className="text-xs text-white uppercase bg-slate-700">
-                                        <tr>
-                                            <th className="px-6 py-3">เดือน</th><th className="px-6 py-3 text-center">จำนวนที่จอง (ห้อง)</th><th className="px-6 py-3 text-right">รายได้ (บาท)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(selectedMonth === 'all' ? getMonthlyData() : [getMonthlyData()[parseInt(selectedMonth) - 1]]).map((m, index) => (
-                                            <tr key={index} className="bg-white border-b hover:bg-gray-50"><td className="px-6 py-2 font-medium text-gray-900">{m.name}</td><td className="px-6 py-2 text-center">{m.count}</td><td className="px-6 py-2 text-right">{m.income.toLocaleString()}</td></tr>
-                                        ))}
-                                        <tr className="bg-gray-100 font-bold"><td className="px-6 py-2 text-gray-900">รวมทั้งหมด</td><td className="px-6 py-2 text-center">{filteredBookingsForReport.length}</td><td className="px-6 py-2 text-right">{totalRevenueReport.toLocaleString()}</td></tr>
                                     </tbody>
                                 </table>
                             </div>

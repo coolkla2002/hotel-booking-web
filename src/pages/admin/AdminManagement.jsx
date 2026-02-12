@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
-import { Trash2, Edit, Plus, Users, Home, ArrowLeft, Image as ImageIcon, X, Box } from 'lucide-react'; // ✅ เพิ่ม Icon Box
+import { Trash2, Edit, Plus, Users, Home, ArrowLeft, Image as ImageIcon, X, Box } from 'lucide-react';
 import API_URL from "/src/config";
 
 const AdminManagement = () => {
@@ -30,208 +30,214 @@ const AdminManagement = () => {
     const formatPhoneNumber = (phone) => {
         if (!phone) return "";
         let p = phone.toString();
-        return p.startsWith('0') ? p : '0' + p;
+        return p.startsWith('0') ? p : `0${p}`;
     };
 
     useEffect(() => {
         const userStr = localStorage.getItem('user');
         if (!userStr) { navigate('/login'); return; }
         const user = JSON.parse(userStr);
-        
-        if (user.role !== 'admin') {
-            Swal.fire('Access Denied', 'หน้านี้สำหรับ Admin เท่านั้น', 'error');
-            navigate('/');
-            return;
-        }
+        if (user.role !== 'admin') { navigate('/'); return; }
 
-        fetchRooms();
         fetchUsers();
+        fetchRooms();
     }, [navigate]);
 
-    const fetchRooms = async () => {
-        try {
-            const res = await fetch(`${API_URL}/rooms`);
-            const data = await res.json();
-            setRooms(data);
-        } catch (err) { console.error(err); }
+    const fetchUsers = () => {
+        fetch(`${API_URL}/users`)
+            .then(res => res.json())
+            .then(data => setUsers(data))
+            .catch(err => console.error(err));
     };
 
-    const fetchUsers = async () => {
-        try {
-            const res = await fetch(`${API_URL}/users?t=${Date.now()}`);
-            const data = await res.json();
-            setUsers(data);
-        } catch (err) { console.error(err); }
+    const fetchRooms = () => {
+        fetch(`${API_URL}/rooms`)
+            .then(res => res.json())
+            .then(data => setRooms(data))
+            .catch(err => console.error(err));
     };
 
-    const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
-        setSelectedFiles(files);
-
-        const filePreviews = files.map(file => URL.createObjectURL(file));
-        setPreviews(filePreviews);
-    };
-
-    const handleRoomSubmit = async (e) => {
-        e.preventDefault();
-        
-        const formData = new FormData(e.target);
-        
-        // ✅ เพิ่มการจัดการ room_count
-        // (ปกติ input name="room_count" จะอยู่ใน formData อยู่แล้ว ไม่ต้องทำอะไรเพิ่ม)
-
-        formData.delete('room_image'); 
-        if (selectedFiles.length > 0) {
-            selectedFiles.forEach((file) => {
-                formData.append('room_image', file); 
-            });
-        }
-
-        const method = isEditing ? 'PUT' : 'POST';
-        const url = isEditing ? `${API_URL}/rooms/${currentRoom.id}` : `${API_URL}/rooms`;
-
-        try {
-            const res = await fetch(url, { 
-                method, 
-                body: formData 
-            });
-
-            const contentType = res.headers.get("content-type");
-            if (res.ok) {
-                Swal.fire('สำเร็จ', isEditing ? 'แก้ไขข้อมูลห้องพักสำเร็จ' : 'เพิ่มห้องพักสำเร็จ', 'success');
-                setShowRoomModal(false);
-                setPreviews([]);
-                setSelectedFiles([]);
-                fetchRooms();
-            } else {
-                const result = contentType && contentType.includes("application/json") ? await res.json() : {};
-                throw new Error(result.message || 'Server Internal Error (500)');
+    // --- จัดการ User ---
+    const handleDeleteUser = (id) => {
+        Swal.fire({
+            title: 'ยืนยันการลบ?', text: "ข้อมูลลูกค้าจะหายไปถาวร!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบเลย'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`${API_URL}/users/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire('ลบสำเร็จ!', '', 'success');
+                            fetchUsers();
+                        } else {
+                            Swal.fire('Error', data.message, 'error');
+                        }
+                    });
             }
-        } catch (err) { 
-            console.error("Submit Error:", err);
-            Swal.fire('Error', err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error'); 
-        }
+        });
     };
 
-    const handleUserUpdate = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const userData = {
-            name: formData.get('name'),
-            email: formData.get('email'),
-            phone: formData.get('phone')
-        };
+    const handleEditUserClick = (user) => {
+        setCurrentUser({ ...user, phone: formatPhoneNumber(user.phone) });
+        setShowUserModal(true);
+    };
 
+    const handleUpdateUser = async (e) => {
+        e.preventDefault();
         try {
             const res = await fetch(`${API_URL}/users/${currentUser.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(userData)
+                body: JSON.stringify(currentUser)
             });
-            if (res.ok) {
-                setUsers(prevUsers => prevUsers.map(user => user.id === currentUser.id ? { ...user, ...userData } : user));
-                Swal.fire({ icon: 'success', title: 'สำเร็จ', text: 'แก้ไขข้อมูลลูกค้าเรียบร้อย', timer: 1500, showConfirmButton: false });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('สำเร็จ', 'อัปเดตข้อมูลลูกค้าเรียบร้อย', 'success');
                 setShowUserModal(false);
-                setTimeout(() => fetchUsers(), 500);
-            }
-        } catch (err) { console.error(err); }
-    };
-
-    const deleteRoom = (id) => {
-        Swal.fire({
-            title: 'ยืนยันการลบ?', text: "ข้อมูลห้องพักจะหายไป", icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                await fetch(`${API_URL}/rooms/${id}`, { method: 'DELETE' });
-                fetchRooms();
-            }
-        });
-    };
-
-    const deleteUser = (id) => {
-        if (id == 1) return Swal.fire('ห้ามลบ', 'ไม่สามารถลบ Super Admin ได้', 'warning');
-        Swal.fire({
-            title: 'ยืนยันการลบลูกค้า?', text: "ข้อมูลลูกค้าจะหายไปจากระบบ", icon: 'warning',
-            showCancelButton: true, confirmButtonColor: '#d33'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                const res = await fetch(`${API_URL}/users/${id}`, { method: 'DELETE' });
-                if (res.ok) {
-                    Swal.fire('ลบแล้ว', 'ลบข้อมูลลูกค้าเรียบร้อย', 'success');
-                    fetchUsers();
+                fetchUsers();
+                
+                // ถ้า Admin แก้ตัวเอง ให้อัปเดต localStorage ด้วย
+                const loggedUser = JSON.parse(localStorage.getItem('user'));
+                if (loggedUser.id === currentUser.id) {
+                    localStorage.setItem('user', JSON.stringify({ ...loggedUser, ...currentUser }));
+                    navigate(0); // รีโหลดหน้าเพื่อให้ Navbar อัปเดต
                 }
+            } else {
+                Swal.fire('ผิดพลาด', data.message, 'error');
+            }
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+        }
+    };
+
+    // --- จัดการ Room ---
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            setSelectedFiles(files);
+            const newPreviews = files.map(file => URL.createObjectURL(file));
+            setPreviews(newPreviews);
+        }
+    };
+
+    const handleAddRoom = () => {
+        setIsEditing(false);
+        setCurrentRoom({ name: '', description: '', price: '', amenities: '', capacity: 2, image_url: '' });
+        setPreviews([]);
+        setSelectedFiles([]);
+        setShowRoomModal(true);
+    };
+
+    const handleEditRoom = (room) => {
+        setIsEditing(true);
+        setCurrentRoom(room);
+        setPreviews(room.image_url ? [`${API_URL}${room.image_url}`] : []); // โชว์รูปเดิมถ้ามี
+        setSelectedFiles([]);
+        setShowRoomModal(true);
+    };
+
+    const handleDeleteRoom = (id) => {
+        Swal.fire({
+            title: 'ลบห้องพักนี้?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'ลบ'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                fetch(`${API_URL}/rooms/${id}`, { method: 'DELETE' })
+                    .then(() => {
+                        Swal.fire('ลบสำเร็จ', '', 'success');
+                        fetchRooms();
+                    });
             }
         });
+    };
+
+    const handleRoomSubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('name', currentRoom.name);
+        formData.append('description', currentRoom.description);
+        formData.append('price', currentRoom.price);
+        formData.append('capacity', currentRoom.capacity);
+        formData.append('amenities', currentRoom.amenities);
+
+        // ถ้ามีการเลือกไฟล์ใหม่ ให้ส่งไป
+        selectedFiles.forEach(file => {
+            formData.append('images', file); 
+        });
+
+        const url = isEditing ? `${API_URL}/rooms/${currentRoom.id}` : `${API_URL}/rooms`;
+        const method = isEditing ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, { method, body: formData });
+            const data = await res.json();
+            if (data.success) {
+                Swal.fire('สำเร็จ', isEditing ? 'แก้ไขห้องพักแล้ว' : 'เพิ่มห้องพักแล้ว', 'success');
+                setShowRoomModal(false);
+                fetchRooms();
+            } else {
+                Swal.fire('Error', data.message, 'error');
+            }
+        } catch (err) {
+            console.error(err);
+            Swal.fire('Error', 'Upload failed', 'error');
+        }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-gray-50 p-8 font-sans">
             <div className="max-w-6xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/')} className="p-2 bg-white rounded-full shadow hover:bg-gray-100 border">
-                            <ArrowLeft size={24} className="text-gray-600" />
-                        </button>
-                        <h1 className="text-3xl font-bold text-gray-800">จัดการข้อมูลระบบ</h1>
-                    </div>
-                    <div className="flex bg-white rounded-lg p-1 shadow border">
-                        <button onClick={() => setActiveTab('rooms')} className={`px-4 py-2 rounded-md flex items-center gap-2 font-bold ${activeTab === 'rooms' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-                            <Home size={18} /> ห้องพัก
-                        </button>
-                        <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-md flex items-center gap-2 font-bold ${activeTab === 'users' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
-                            <Users size={18} /> ลูกค้า
-                        </button>
-                    </div>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <button 
+                        // ✅ แก้ไขตรงนี้: ให้กลับไปหน้า /admin แทนหน้าแรก
+                        onClick={() => navigate('/admin')} 
+                        className="flex items-center gap-2 text-gray-500 hover:text-gray-800 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                        <span className="font-bold">ย้อนกลับ</span>
+                    </button>
+                    <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+                        <Box className="text-blue-600" /> จัดการข้อมูลพื้นฐาน
+                    </h1>
                 </div>
 
+                {/* Tabs */}
+                <div className="bg-white rounded-2xl shadow-sm p-2 flex gap-2 mb-6 w-fit mx-auto">
+                    <button onClick={() => setActiveTab('rooms')} className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'rooms' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        <Home size={18} /> จัดการห้องพัก
+                    </button>
+                    <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'users' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100'}`}>
+                        <Users size={18} /> จัดการลูกค้า
+                    </button>
+                </div>
+
+                {/* Content: Rooms */}
                 {activeTab === 'rooms' && (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-700">รายการห้องพักทั้งหมด</h2>
-                            <button onClick={() => { 
-                                setIsEditing(false); 
-                                setCurrentRoom(null); 
-                                setPreviews([]);
-                                setSelectedFiles([]);
-                                setShowRoomModal(true); 
-                            }} className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 font-bold shadow transition-transform active:scale-95">
-                                <Plus size={18} /> เพิ่มห้องพักใหม่
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 animate-fade-in">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-gray-700">รายการห้องพักทั้งหมด ({rooms.length})</h2>
+                            <button onClick={handleAddRoom} className="bg-green-600 text-white px-4 py-2 rounded-xl font-bold hover:bg-green-700 flex items-center gap-2 shadow-sm transition-transform active:scale-95">
+                                <Plus size={20} /> เพิ่มห้องใหม่
                             </button>
                         </div>
-
-                        <div className="grid grid-cols-1 gap-6">
-                            {rooms.map(room => (
-                                <div key={room.id} className="bg-white rounded-[2rem] p-4 shadow-md border border-gray-100 flex items-center gap-6">
-                                    <div className="w-32 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
-                                        <img 
-                                            src={room.image_url ? `${API_URL}/uploads/${room.image_url}` : 'https://via.placeholder.com/150'} 
-                                            alt={room.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-extrabold text-gray-800">{room.name}</h3>
-                                        <div className="flex gap-4 mt-1 text-gray-600 font-medium text-sm">
-                                            <span className="text-blue-600 font-bold text-lg">{Number(room.price).toLocaleString()} บาท/คืน</span>
-                                            {/* ✅ แสดงจำนวนห้อง */}
-                                            <span className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg border">
-                                                <Box size={14} className="text-gray-500"/> มีทั้งหมด {room.room_count || 15} ห้อง
-                                            </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {rooms.map((room) => (
+                                <div key={room.id} className="group relative bg-white rounded-2xl border hover:border-blue-400 overflow-hidden shadow-sm hover:shadow-md transition-all">
+                                    <div className="h-48 overflow-hidden relative">
+                                        <img src={room.image_url ? `${API_URL}${room.image_url}` : 'https://placehold.co/600x400'} alt={room.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => handleEditRoom(room)} className="p-2 bg-white/90 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white shadow"><Edit size={16} /></button>
+                                            <button onClick={() => handleDeleteRoom(room.id)} className="p-2 bg-white/90 text-red-600 rounded-lg hover:bg-red-600 hover:text-white shadow"><Trash2 size={16} /></button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => { 
-                                            setIsEditing(true); 
-                                            setCurrentRoom(room); 
-                                            setPreviews(room.image_url ? [`${API_URL}/uploads/${room.image_url}`] : []);
-                                            setShowRoomModal(true); 
-                                        }} className="p-3 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition shadow-sm">
-                                            <Edit size={20} />
-                                        </button>
-                                        <button onClick={() => deleteRoom(room.id)} className="p-3 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition shadow-sm">
-                                            <Trash2 size={20} />
-                                        </button>
+                                    <div className="p-4">
+                                        <h3 className="font-bold text-lg text-gray-800 mb-1">{room.name}</h3>
+                                        <p className="text-blue-600 font-bold text-xl">{Number(room.price).toLocaleString()} ฿ <span className="text-xs text-gray-400 font-normal">/ คืน</span></p>
+                                        <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                                            <span>👥 {room.capacity} ท่าน</span>
+                                            <span className={`px-2 py-1 rounded-full text-xs ${room.status === 'available' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{room.status}</span>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -239,30 +245,37 @@ const AdminManagement = () => {
                     </div>
                 )}
 
+                {/* Content: Users */}
                 {activeTab === 'users' && (
-                    <div className="bg-white rounded-xl shadow-sm border p-6">
-                        <h2 className="text-xl font-bold mb-6 text-gray-700">จัดการข้อมูลลูกค้า</h2>
+                    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 animate-fade-in">
+                        <h2 className="text-xl font-bold text-gray-700 mb-6">รายชื่อลูกค้าในระบบ ({users.length})</h2>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-100">
-                                        <th className="p-4 border">ชื่อ</th>
-                                        <th className="p-4 border">อีเมล</th>
-                                        <th className="p-4 border">เบอร์โทรศัพท์</th>
-                                        <th className="p-4 border text-center">จัดการ</th>
+                                    <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider border-b">
+                                        <th className="p-4 rounded-tl-xl">ID</th>
+                                        <th className="p-4">ชื่อ-นามสกุล</th>
+                                        <th className="p-4">อีเมล</th>
+                                        <th className="p-4">เบอร์โทร</th>
+                                        <th className="p-4">บทบาท</th>
+                                        <th className="p-4 text-center rounded-tr-xl">จัดการ</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {users.map(user => (
-                                        <tr key={user.id} className="hover:bg-gray-50 transition">
-                                            <td className="p-4 border font-medium">{user.name}</td>
-                                            <td className="p-4 border text-gray-600">{user.email}</td>
-                                            <td className="p-4 border">{formatPhoneNumber(user.phone)}</td>
-                                            <td className="p-4 border text-center">
-                                                <div className="flex justify-center gap-2">
-                                                    <button onClick={() => { setCurrentUser(user); setShowUserModal(true); }} className="text-blue-600 hover:bg-blue-100 p-2 rounded-lg transition"><Edit size={18} /></button>
-                                                    <button onClick={() => deleteUser(user.id)} className="text-red-600 hover:bg-red-100 p-2 rounded-lg transition"><Trash2 size={18} /></button>
-                                                </div>
+                                <tbody className="text-gray-700 text-sm">
+                                    {users.map((user) => (
+                                        <tr key={user.id} className="border-b hover:bg-blue-50/30 transition-colors">
+                                            <td className="p-4 font-bold text-gray-400">#{user.id}</td>
+                                            <td className="p-4 font-bold">{user.name}</td>
+                                            <td className="p-4">{user.email}</td>
+                                            <td className="p-4">{user.phone || '-'}</td>
+                                            <td className="p-4">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${user.role === 'admin' ? 'bg-red-100 text-red-700' : user.role === 'manager' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                    {user.role}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-center flex justify-center gap-2">
+                                                <button onClick={() => handleEditUserClick(user)} className="p-2 text-blue-500 hover:bg-blue-100 rounded-lg transition"><Edit size={16} /></button>
+                                                <button onClick={() => handleDeleteUser(user.id)} className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition"><Trash2 size={16} /></button>
                                             </td>
                                         </tr>
                                     ))}
@@ -273,56 +286,33 @@ const AdminManagement = () => {
                 )}
             </div>
 
-            {showUserModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2rem] w-full max-w-md p-8 shadow-2xl border-4 border-white">
-                        <h2 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2"><Users className="text-blue-600" /> แก้ไขข้อมูลลูกค้า</h2>
-                        <form onSubmit={handleUserUpdate} className="space-y-5">
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-นามสกุล</label><input name="name" defaultValue={currentUser?.name} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">อีเมล</label><input name="email" type="email" defaultValue={currentUser?.email} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทรศัพท์</label><input name="phone" defaultValue={formatPhoneNumber(currentUser?.phone)} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required /></div>
-                            <div className="flex gap-3 justify-end pt-4">
-                                <button type="button" onClick={() => setShowUserModal(false)} className="px-6 py-2 text-red-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
-                                <button type="submit" className="px-8 py-2 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">บันทึกการแก้ไข</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
+            {/* Modal: Add/Edit Room */}
             {showRoomModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2rem] w-full max-w-lg p-8 shadow-2xl overflow-y-auto max-h-[90vh]">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold text-gray-800">{isEditing ? 'แก้ไขห้องพัก' : 'เพิ่มห้องพักใหม่'}</h2>
-                            <button onClick={() => setShowRoomModal(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-400"><X size={24}/></button>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-scale-up">
+                        <div className="bg-gray-800 p-4 flex justify-between items-center text-white">
+                            <h3 className="text-lg font-bold flex items-center gap-2">{isEditing ? <Edit size={18}/> : <Plus size={18}/>} {isEditing ? 'แก้ไขห้องพัก' : 'เพิ่มห้องพักใหม่'}</h3>
+                            <button onClick={() => setShowRoomModal(false)} className="hover:bg-gray-700 p-1 rounded-full"><X size={20}/></button>
                         </div>
-                        <form onSubmit={handleRoomSubmit} className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label>
-                                <input name="room_name" defaultValue={currentRoom?.name} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
-                            </div>
-                            
+                        <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label>
-                                    <input name="price" type="number" defaultValue={currentRoom?.price} className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
-                                </div>
-                                
-                                {/* ✅ เพิ่มช่องกรอกจำนวนห้อง */}
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด</label>
-                                    <input name="room_count" type="number" defaultValue={currentRoom?.room_count || 15} min="1" className="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-blue-500 outline-none transition" required />
-                                </div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label><input type="text" className="w-full border p-2 rounded-lg" value={currentRoom.name} onChange={e => setCurrentRoom({...currentRoom, name: e.target.value})} required /></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-1">ราคา (บาท)</label><input type="number" className="w-full border p-2 rounded-lg" value={currentRoom.price} onChange={e => setCurrentRoom({...currentRoom, price: e.target.value})} required /></div>
+                            </div>
+                            <div><label className="block text-sm font-bold text-gray-700 mb-1">คำอธิบาย</label><textarea className="w-full border p-2 rounded-lg h-24" value={currentRoom.description} onChange={e => setCurrentRoom({...currentRoom, description: e.target.value})}></textarea></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-sm font-bold text-gray-700 mb-1">ความจุ (คน)</label><input type="number" className="w-full border p-2 rounded-lg" value={currentRoom.capacity} onChange={e => setCurrentRoom({...currentRoom, capacity: e.target.value})} required /></div>
+                                <div><label className="block text-sm font-bold text-gray-700 mb-1">สิ่งอำนวยความสะดวก (คั่นด้วย ,)</label><input type="text" className="w-full border p-2 rounded-lg" value={currentRoom.amenities} onChange={e => setCurrentRoom({...currentRoom, amenities: e.target.value})} placeholder="Wifi, TV, Air Con" /></div>
                             </div>
                             
+                            {/* Upload Image */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">รูปภาพห้องพัก (เลือกได้หลายรูป)</label>
-                                <div className="relative group">
-                                    <input type="file" name="room_image" multiple accept="image/*" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" required={!isEditing} />
-                                    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-gray-50 group-hover:bg-blue-50 group-hover:border-blue-200 transition">
-                                        <ImageIcon size={40} className="text-gray-400 group-hover:text-blue-400 mb-2" />
-                                        <span className="text-sm font-medium text-gray-500 group-hover:text-blue-600">คลิกเพื่อเลือกไฟล์รูปภาพ</span>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">รูปภาพหลัก</label>
+                                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition cursor-pointer relative">
+                                    <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                                    <div className="flex flex-col items-center text-gray-400">
+                                        <ImageIcon size={32} />
+                                        <span className="text-sm mt-2">คลิกเพื่ออัปโหลดรูปภาพ</span>
                                     </div>
                                 </div>
                             </div>
@@ -342,6 +332,35 @@ const AdminManagement = () => {
                                 <button type="submit" className="px-8 py-2 bg-green-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">
                                     {isEditing ? 'บันทึกการแก้ไข' : 'ยืนยัน'}
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Edit User */}
+            {showUserModal && currentUser && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-scale-up">
+                        <div className="bg-purple-800 p-4 flex justify-between items-center text-white">
+                            <h3 className="text-lg font-bold flex items-center gap-2"><Edit size={18}/> แก้ไขข้อมูลลูกค้า</h3>
+                            <button onClick={() => setShowUserModal(false)} className="hover:bg-purple-700 p-1 rounded-full"><X size={20}/></button>
+                        </div>
+                        <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-นามสกุล</label><input type="text" className="w-full border p-2 rounded-lg" value={currentUser.name} onChange={e => setCurrentUser({...currentUser, name: e.target.value})} required /></div>
+                            <div><label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทรศัพท์</label><input type="text" className="w-full border p-2 rounded-lg" value={currentUser.phone} onChange={e => setCurrentUser({...currentUser, phone: e.target.value})} /></div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">บทบาท</label>
+                                <select className="w-full border p-2 rounded-lg bg-white" value={currentUser.role} onChange={e => setCurrentUser({...currentUser, role: e.target.value})}>
+                                    <option value="user">User (ลูกค้าทั่วไป)</option>
+                                    <option value="manager">Manager (ผู้จัดการ)</option>
+                                    <option value="admin">Admin (ผู้ดูแลระบบ)</option>
+                                </select>
+                            </div>
+
+                            <div className="flex gap-3 justify-end pt-4 border-t">
+                                <button type="button" onClick={() => setShowUserModal(false)} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
+                                <button type="submit" className="px-8 py-2 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition active:scale-95">บันทึก</button>
                             </div>
                         </form>
                     </div>

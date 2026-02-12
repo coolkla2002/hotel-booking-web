@@ -1,3 +1,5 @@
+// Receipt.jsx
+
 import React, { useEffect, useState, useRef } from 'react'; 
 import { useLocation, useNavigate } from 'react-router-dom';
 import html2canvas from 'html2canvas'; 
@@ -7,10 +9,7 @@ const Receipt = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
-  const receiptRef = useRef(null); // สร้าง ref สำหรับอ้างอิงส่วนที่จะ export
-
-  // ❌ ลบหรือคอมเมนต์การใช้ user จาก localStorage เพราะเราจะใช้จาก booking แทน
-  // const user = JSON.parse(localStorage.getItem('user')) || {};
+  const receiptRef = useRef(null); 
 
   useEffect(() => {
     if (location.state && location.state.booking) {
@@ -20,14 +19,21 @@ const Receipt = () => {
     }
   }, [location, navigate]);
 
-  // ฟังก์ชันดาวน์โหลด PDF
+  // ✅ ฟังก์ชันคำนวณจำนวนคืน
+  const calculateNights = (start, end) => {
+    const s = new Date(start);
+    const e = new Date(end);
+    const diff = Math.abs(e - s);
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  };
+
   const handleDownloadPDF = async () => {
     const element = receiptRef.current;
     if (!element) return;
 
     try {
       const canvas = await html2canvas(element, {
-        scale: 2, // เพิ่มความชัด
+        scale: 2, 
         useCORS: true,
         logging: false,
       });
@@ -38,7 +44,9 @@ const Receipt = () => {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Receipt_Booking_${booking.id}.pdf`);
+      
+      // ✅ แก้ไขชื่อไฟล์ให้เลข ID เป็น 3 หลัก (เช่น Receipt_Booking_005.pdf)
+      pdf.save(`Receipt_Booking_${String(booking.id).padStart(3, '0')}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
     }
@@ -46,13 +54,14 @@ const Receipt = () => {
 
   if (!booking) return null;
 
+  const nights = calculateNights(booking.check_in_date, booking.check_out_date);
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 print:bg-white print:p-0">
       
-      {/* ส่วนปุ่มกดพิมพ์ */}
       <div className="mb-6 flex gap-4 print:hidden">
         <button 
-          onClick={handleDownloadPDF} // ใช้ฟังก์ชัน handleDownloadPDF
+          onClick={handleDownloadPDF} 
           className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 font-bold flex items-center gap-2"
         >
           ดาวน์โหลดใบเสร็จ (PDF)
@@ -65,14 +74,10 @@ const Receipt = () => {
         </button>
       </div>
 
-      {/* กระดาษใบเสร็จ - เพิ่ม ref={receiptRef} */}
       <div ref={receiptRef} className="bg-white p-10 rounded shadow-lg w-[210mm] min-h-[297mm] relative text-gray-800 print:shadow-none print:w-full print:h-auto">
         
-        {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-6">
           <div className="flex items-center gap-4"> 
-            
-            {/* ส่วน Logo */}
             <div className="w-20 h-20 overflow-hidden rounded-lg bg-gray-100 border flex items-center justify-center">
               <img 
                 src="images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
@@ -80,13 +85,11 @@ const Receipt = () => {
                 className="w-full h-full object-contain"
               />
             </div>
-
             <div>
               <h1 className="text-4xl font-bold text-blue-900">HOTEL BOOKING</h1>
               <p className="text-sm text-gray-500 mt-1">ใบยืนยันการจองห้องพัก / Receipt</p>
             </div>
           </div>
-
           <div className="text-right">
             <h2 className="text-xl font-bold">RCBAT Hotel</h2>
             <p className="text-sm">888 นครราชสีมา</p>
@@ -95,16 +98,23 @@ const Receipt = () => {
           </div>
         </div>
 
-        {/* ข้อมูลลูกค้าและการจอง */}
+        {/* ✅ ส่วนแสดงสิทธิ์ข้าราชการ (ถ้ามี) */}
+        {booking.user_type === 'official' && (
+          <div className="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
+            <p className="text-blue-800 font-bold">✨ สิทธิประโยชน์สำหรับข้าราชการ</p>
+            <p className="text-sm text-blue-600">ได้รับส่วนลดพิเศษ 100 บาท สำหรับการจองรายการนี้ (ตรวจสอบสิทธิ์จากบัตรข้าราชการแล้ว)</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-8 mb-8">
           <div>
             <h3 className="font-bold text-gray-600 border-b mb-2">ข้อมูลผู้จอง (Customer)</h3>
-            <p><strong>Booking ID:</strong> #{booking.id}</p>
             
-            {/* ✅ แก้ไข: ใช้ fullname และ email จาก object booking ที่ JOIN มาจาก server */}
+            {/* ✅ แก้ไขการแสดงผล ID ให้เป็น 3 หลัก (เช่น #001) */}
+            <p><strong>Booking ID:</strong> #{String(booking.id).padStart(3, '0')}</p>
+            
             <p><strong>ชื่อผู้จอง:</strong> {booking.fullname || booking.name || booking.user_name || 'คุณลูกค้า'}</p>
             <p><strong>อีเมล:</strong> {booking.email || '-'}</p>
-            
             <p><strong>วันที่ทำรายการ:</strong> {new Date(booking.created_at || booking.booking_date).toLocaleString('th-TH', {
                 year: 'numeric',
                 month: 'long',
@@ -125,29 +135,28 @@ const Receipt = () => {
           </div>
         </div>
 
-        {/* ตารางรายละเอียด */}
         <table className="w-full mb-8 border-collapse">
           <thead>
             <tr className="bg-gray-200 text-gray-700">
               <th className="p-3 text-left border">รายการ (Description)</th>
-              <th className="p-3 text-center border">จำนวนห้อง (Rooms)</th> {/* เพิ่มคอลัมน์นี้ */}
-              <th className="p-3 text-center border">วันที่ (Date)</th>
-              <th className="p-3 text-right border">จำนวนเงินรวม (Total Amount)</th>
+              <th className="p-3 text-center border">จำนวนคืน (Nights)</th>
+              <th className="p-3 text-center border">จำนวนห้อง (Rooms)</th>
+              <th className="p-3 text-right border">จำนวนเงินรวม (Total)</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td className="p-3 border">
                 <p className="font-bold">{booking.room_name}</p>
-                <p className="text-sm text-gray-500">ค่าที่พัก (Room Charge)</p>
+                <p className="text-sm text-gray-500">
+                  {new Date(booking.check_in_date).toLocaleDateString('th-TH')} - {new Date(booking.check_out_date).toLocaleDateString('th-TH')}
+                </p>
               </td>
-              {/* แสดงจำนวนห้องที่จอง โดยอ้างอิงจาก booking.room_count */}
               <td className="p-3 border text-center font-bold">
-                {booking.room_count || 1} ห้อง
+                {nights} คืน
               </td>
               <td className="p-3 border text-center">
-                {new Date(booking.check_in_date).toLocaleDateString('th-TH')} <br/> ถึง <br/>
-                {new Date(booking.check_out_date).toLocaleDateString('th-TH')}
+                {booking.room_count || 1} ห้อง
               </td>
               <td className="p-3 border text-right align-top font-bold">
                 {Number(booking.price).toLocaleString()} บาท
@@ -155,8 +164,15 @@ const Receipt = () => {
             </tr>
           </tbody>
           <tfoot>
+            {/* ✅ แสดงส่วนลดถ้าเป็นข้าราชการ */}
+            {booking.user_type === 'official' && (
+              <tr className="bg-gray-50">
+                <td colSpan="3" className="p-3 text-right text-sm text-red-600 font-bold border italic">ส่วนลดข้าราชการ (Official Discount)</td>
+                <td className="p-3 text-right text-sm text-red-600 font-bold border italic">- 100 บาท</td>
+              </tr>
+            )}
             <tr className="bg-gray-100">
-              <td colSpan="3" className="p-3 text-right font-bold border">รวมเงินทั้งสิ้น (Total)</td>
+              <td colSpan="3" className="p-3 text-right font-bold border">ยอดชำระสุทธิ (Net Total)</td>
               <td className="p-3 text-right font-bold border text-xl text-blue-800">
                 {Number(booking.price).toLocaleString()} บาท
               </td>
@@ -164,9 +180,8 @@ const Receipt = () => {
           </tfoot>
         </table>
 
-        {/* Footer */}
         <div className="absolute bottom-10 left-10 right-10 text-center border-t pt-4 text-gray-500 text-sm">
-          <p>RCBAT Hotel</p>
+          <p>RCBAT Hotel - ขอบคุณที่ใช้บริการ</p>
         </div>
 
       </div>
