@@ -327,7 +327,7 @@ const BookingHistory = ({ user }) => {
                     </p>
                     {item.reschedule_reason && (
                        <p className="text-xs text-orange-600 mt-2 bg-orange-50 p-2 rounded border border-orange-100 inline-block">
-                          📝 เหตุผลขอเลื่อน: {item.reschedule_reason}
+                         📝 เหตุผลขอเลื่อน: {item.reschedule_reason}
                        </p>
                     )}
                 </div>
@@ -339,7 +339,10 @@ const BookingHistory = ({ user }) => {
                       <>
                         <button onClick={() => navigate('/receipt', { state: { booking: item } })} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-blue-200">🧾 ใบเสร็จ</button>
                         
-                        <button onClick={() => handleReschedule(item.id, item.room_name, item.check_in_date, item.check_out_date, item.price, item.reschedule_count)} className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200">📅 เลื่อนวัน</button>
+                        {/* ✅ ตรวจสอบสถานะก่อนโชว์ปุ่มเลื่อนวัน: ต้องเป็น approved หรือ upcoming เท่านั้น */}
+                        {(item.status === 'approved' || item.status === 'upcoming') && (
+                          <button onClick={() => handleReschedule(item.id, item.room_name, item.check_in_date, item.check_out_date, item.price, item.reschedule_count)} className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200">📅 เลื่อนวัน</button>
+                        )}
                         
                         <button onClick={() => handleCancel(item.id, (item.check_in_date || item.booking_date))} className="bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200">❌ ยกเลิก</button>
                       </>
