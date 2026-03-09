@@ -1,11 +1,12 @@
 // client/src/pages/client/EditProfile.jsx
 
 import React, { useState, useEffect } from 'react';
-import { User, Settings, Camera, Pencil, Phone, Globe, Hash } from 'lucide-react'; // ✅ เพิ่ม Hash icon
+import { Settings, Pencil, Phone, Globe, Hash } from 'lucide-react'; 
 import Swal from 'sweetalert2';
 import API_URL from "/src/config";
 
 const EditProfile = ({ user, onUpdateUser }) => {
+  console.log("ข้อมูล user ที่ส่งมาหน้าแก้ไขโปรไฟล์:", user);
   if (!user) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -24,44 +25,32 @@ const EditProfile = ({ user, onUpdateUser }) => {
     email: '',
   });
 
-  const [imageFile, setImageFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-
-  // แก้ไขในส่วน useEffect ของ EditProfile.jsx
   useEffect(() => {
     if (user) {
-      // ฟังก์ชันช่วยเติมเลข 0 ถ้าข้อมูลที่มาไม่มีเลข 0 นำหน้า
       const formatPhone = (phone) => {
         if (!phone) return '';
         let p = phone.toString();
-        // ถ้าเบอร์มี 9 หลัก และตัวแรกไม่ใช่ 0 ให้เติม 0 เข้าไปข้างหน้า
         if (p.length === 9 && !p.startsWith('0')) {
           return '0' + p;
         }
         return p;
       };
 
-      // ✅ เพิ่มฟังก์ชันแปลงวันที่จาก Database (ISO) ให้เป็น YYYY-MM-DD สำหรับ input type="date"
       const formatDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return ''; // ถ้าวันที่ไม่ถูกต้อง
-        return date.toISOString().split('T')[0]; // ตัดเอาแค่ 2023-12-31
+        if (isNaN(date.getTime())) return ''; 
+        return date.toISOString().split('T')[0]; 
       };
 
+      // ✅ แก้ไขส่วน setFormData ตรงนี้ให้ดึง gender และ birthdate มาด้วย
       setFormData({
         name: user.name || '',
-        gender: user.gender || '', // ✅ ดึงค่าเพศ
-        birthdate: formatDate(user.birthdate), // ✅ แปลงวันที่ให้ถูกต้องก่อนแสดง
-        phone: formatPhone(user.phone), 
+        gender: user.gender || user.sex || '',  // เช็กทั้งคำว่า gender และ sex เผื่อ backend ส่งมาชื่อไหน
+        birthdate: formatDate(user.birthdate) || '', // ฟอร์แมตวันเกิดให้ลงช่อง input type="date" ได้พอดี
+        phone: formatPhone(user.phone),
         email: user.email || '',
       });
-
-      if (user?.profile_image) {
-        setPreview(`${API_URL}/uploads/${user.profile_image}`);
-      } else {
-        setPreview(null);
-      }
     }
   }, [user]);
 
@@ -69,43 +58,33 @@ const EditProfile = ({ user, onUpdateUser }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      setPreview(URL.createObjectURL(file));
-    }
-  };
-
   const handleSave = async () => {
     try {
-        const data = new FormData();
-        data.append('id', user.id);
-        data.append('name', formData.name);
-        data.append('gender', formData.gender); // ✅ ส่งค่าเพศไปอัปเดต
-        data.append('birthdate', formData.birthdate); // ✅ ส่งค่าวันเกิดไปอัปเดต
-        data.append('phone', formData.phone);
-        
-        if (imageFile) {
-            data.append('profile_image', imageFile);
-        }
+        // เปลี่ยนจาก FormData เป็น Object ธรรมดา
+        const payload = {
+            id: user.id || user.user_id,
+            name: formData.name || '',
+            gender: formData.gender || '',
+            birthdate: formData.birthdate || '',
+            phone: formData.phone || ''
+        };
 
         const response = await fetch(API_URL + '/update-user', {
             method: 'PUT',
-            body: data
+            headers: {
+                'Content-Type': 'application/json' // ระบุว่าส่ง JSON
+            },
+            body: JSON.stringify(payload)
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // ✅ 1. สร้าง Object ข้อมูลผู้ใช้ใหม่โดยรวมข้อมูลเดิมเข้ากับค่าใหม่ที่เพิ่งแก้
             const updatedUser = {
-                ...user,            // ข้อมูลเดิม (เช่น role, email ที่ห้ามแก้)
-                ...formData,        // ข้อมูลใหม่จากฟอร์ม (name, gender, birthdate, phone)
-                profile_image: result.user?.profile_image || user.profile_image // รูปภาพใหม่ (ถ้ามี)
+                ...user,            
+                ...formData         
             };
 
-            // ✅ 2. อัปเดต localStorage ทันที เพื่อให้ส่วนหัวเว็บ (Navbar) หรือหน้าอื่นๆ เปลี่ยนตาม
             localStorage.setItem('user', JSON.stringify(updatedUser));
 
             await Swal.fire({
@@ -116,17 +95,9 @@ const EditProfile = ({ user, onUpdateUser }) => {
                 showConfirmButton: false
             });
 
-            // ✅ 3. ส่งข้อมูลที่อัปเดตแล้วกลับไปให้ Component แม่
             if (onUpdateUser) {
                 onUpdateUser(updatedUser);
             }
-
-            // ✅ 4. จัดการเรื่องรูปภาพ Preview
-            if (result.user?.profile_image) {
-                setPreview(`${API_URL}/uploads/${result.user.profile_image}?t=${Date.now()}`);
-            }
-            setImageFile(null);
-
         } else {
             Swal.fire('เกิดข้อผิดพลาด', result.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
         }
@@ -137,10 +108,6 @@ const EditProfile = ({ user, onUpdateUser }) => {
     }
   };
 
-  const handleImageError = () => {
-      setPreview(null);
-  };
-
   return (
     <div className="max-w-4xl mx-auto">
       <h2 className="text-3xl font-bold text-blue-900 mb-8 flex items-center gap-3">
@@ -149,32 +116,8 @@ const EditProfile = ({ user, onUpdateUser }) => {
       </h2>
 
       <div className="bg-blue-200/50 p-8 rounded-[50px] shadow-xl relative">
-        
-        {/* ส่วนรูปโปรไฟล์ */}
-        <div className="flex justify-center mb-10 relative">
-          <div className="w-40 h-40 rounded-full bg-white border-4 border-blue-300 flex items-center justify-center overflow-hidden shadow-md relative group">
-            {preview ? (
-                <img key={preview} src={preview} alt="Profile" className="w-full h-full object-cover" onError={handleImageError} />
-            ) : (
-                <img src="https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg?w=740" alt="Avatar" className="w-full h-full object-cover" />
-            )}
-            <label className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                <span className="text-white font-bold flex flex-col items-center">
-                    <Camera size={24} />
-                    <span>เปลี่ยนรูป</span>
-                </span>
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-            </label>
-            <div className="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full text-white pointer-events-none">
-                <Camera size={20} />
-            </div>
-          </div>
-        </div>
-
-        {/* ฟอร์มแก้ไขข้อมูล */}
         <form className="space-y-6 max-w-2xl mx-auto">
           
-          {/* ✅ ส่วน User ID ที่เพิ่มเข้ามา */}
           <div>
             <label className="block text-blue-900 font-bold mb-2 text-2xl">
                 User ID <span className="text-sm text-red-500 font-normal ml-2">*ไม่สามารถแก้ไขได้</span>

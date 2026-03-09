@@ -83,10 +83,11 @@ const HomePage = () => {
           getImageUrl(room.image_url)
         ],
         amenities: typeof room.amenities === 'string' 
-  ? room.amenities.split(',').map(item => item.trim()) 
-  : (room.amenities || []),
+          ? room.amenities.split(',').map(item => item.trim()) 
+          : (room.amenities || []),
         description: room.description || 'ห้องพักบรรยากาศอบอุ่น กว้างขวาง เหมาะสำหรับการพักผ่อนอย่างแท้จริง พร้อมสิ่งอำนวยความสะดวกครบครัน',
-        capacity: room.capacity || 2
+        capacity: room.capacity || 2,
+        room_count: room.room_count // <-- เพิ่มบรรทัดนี้ลงไปเพื่อให้ React รู้จักจำนวนห้องรวม
       }));
 
       setRooms(formattedRooms);
@@ -126,11 +127,19 @@ const HomePage = () => {
 
     Swal.fire({ title: 'กำลังตรวจสอบห้องว่าง...', didOpen: () => Swal.showLoading() });
 
+    // ✅ ส่วนที่แก้ไข: ดึงข้อมูลห้องทั้งหมดและคำนวณห้องว่าง
     let availableRooms = 0;
+    // เปลี่ยนมาดึงจำนวนรวมจากข้อมูลห้องของแอดมินเป็นหลัก
+    let totalRooms = room.room_count ? room.room_count : 15; 
+
     try {
       const res = await fetch(`${API_URL}/check-availability?roomName=${encodeURIComponent(room.name)}&checkIn=${checkInDate}&checkOut=${checkOutDate}`);
       const data = await res.json();
       availableRooms = data.available;
+      // ถ้า API คืนค่า data.total กลับมา ให้ใช้ค่านั้น ถ้าไม่มีก็ใช้ของแอดมิน
+      if (data.total > 0) {
+          totalRooms = data.total;
+      }
       Swal.close();
     } catch (e) {
       console.error(e);
@@ -143,8 +152,9 @@ const HomePage = () => {
       return;
     }
 
+    // ✅ ส่วนที่แก้ไข: แสดงจำนวนห้องทั้งหมด และว่างกี่ห้อง
     const { value: roomCount } = await Swal.fire({
-      title: `ห้องว่าง ${availableRooms} ห้อง`,
+      title: `ว่าง ${availableRooms} ห้อง (จากทั้งหมด ${totalRooms} ห้อง)`,
       text: 'กรุณาระบุจำนวนห้องที่ต้องการจอง',
       input: 'select',
       inputOptions: Object.fromEntries(Array.from({ length: availableRooms }, (_, i) => [i + 1, `${i + 1} ห้อง`])),

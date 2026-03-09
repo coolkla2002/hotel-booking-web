@@ -25,7 +25,9 @@ const BookingHistory = ({ user }) => {
         .then(data => {
             // ป้องกัน Error ถ้า data ไม่ใช่ Array
             if (Array.isArray(data)) {
-                setBookings(data);
+                // ✅ แก้ไข: กรองข้อมูลซ้ำออกก่อนเซ็ต State
+                const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
+                setBookings(uniqueBookings);
             } else {
                 setBookings([]);
                 console.error("Data received is not an array:", data);
@@ -146,7 +148,13 @@ const BookingHistory = ({ user }) => {
              const userId = user.id || user.user_id || user.ID;
              fetch(`${API_URL}/my-bookings/${userId}`)
               .then(res => res.json())
-              .then(data => setBookings(data));
+              .then(data => {
+                  // ✅ แก้ไข: กรองข้อมูลที่ id ซ้ำกันออก
+                  if (Array.isArray(data)) {
+                      const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
+                      setBookings(uniqueBookings);
+                  }
+              });
           }
         } else {
           Swal.fire('เกิดข้อผิดพลาด', data.message, 'error');
@@ -158,7 +166,7 @@ const BookingHistory = ({ user }) => {
     }
   };
 
-  // ✅ ฟังก์ชันขอยกเลิกการจอง (อัปเดตใหม่: รับข้อมูลบัญชีและ QR Code)
+  // ✅ ฟังก์ชันขอยกเลิกการจอง
   const handleCancel = async (bookingId, checkInDate) => {
     if (!canModify(checkInDate)) {
       Swal.fire('ไม่สามารถยกเลิกได้', 'ต้องยกเลิกจองล่วงหน้าอย่างน้อย 24 ชั่วโมง', 'error');
@@ -220,11 +228,9 @@ const BookingHistory = ({ user }) => {
     });
 
     if (formValues) {
-      // แสดง Loading ระหว่างส่งข้อมูล
       Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
-        // ใช้ FormData เพื่อรองรับการอัปโหลดไฟล์
         const formData = new FormData();
         formData.append('booking_id', bookingId);
         formData.append('reason', formValues.reason);
@@ -235,7 +241,6 @@ const BookingHistory = ({ user }) => {
 
         const response = await fetch(`${API_URL}/cancel-booking`, {
           method: 'POST',
-          // ไม่ต้องใส่ Content-Type: application/json เพราะใช้ FormData
           body: formData 
         });
 
@@ -247,7 +252,11 @@ const BookingHistory = ({ user }) => {
              fetch(`${API_URL}/my-bookings/${userId}`)
               .then(res => res.json())
               .then(data => {
-                  if (Array.isArray(data)) setBookings(data);
+                  // ✅ แก้ไข: กรองข้อมูลที่ id ซ้ำกันออก
+                  if (Array.isArray(data)) {
+                      const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
+                      setBookings(uniqueBookings);
+                  }
               });
           }
         } else {
@@ -295,8 +304,9 @@ const BookingHistory = ({ user }) => {
         {filteredBookings.length === 0 ? (
           <div className="text-center text-gray-500 py-10 bg-white rounded-xl shadow-sm">📭 ยังไม่มีประวัติการจอง</div>
         ) : (
-          filteredBookings.map((item) => (
-            <div key={item.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          // ✅ แก้ไข: เพิ่ม index เข้าไปใน key เพื่อป้องกัน React ฟ้อง Error 100%
+          filteredBookings.map((item, index) => (
+            <div key={`${item.id}-${index}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 
                 <div className="flex-1">
@@ -339,7 +349,6 @@ const BookingHistory = ({ user }) => {
                       <>
                         <button onClick={() => navigate('/receipt', { state: { booking: item } })} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-blue-200">🧾 ใบเสร็จ</button>
                         
-                        {/* ✅ ตรวจสอบสถานะก่อนโชว์ปุ่มเลื่อนวัน: ต้องเป็น approved หรือ upcoming เท่านั้น */}
                         {(item.status === 'approved' || item.status === 'upcoming') && (
                           <button onClick={() => handleReschedule(item.id, item.room_name, item.check_in_date, item.check_out_date, item.price, item.reschedule_count)} className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-lg text-sm font-bold hover:bg-yellow-200">📅 เลื่อนวัน</button>
                         )}

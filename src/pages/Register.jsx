@@ -55,11 +55,14 @@ const Register = () => {
             headers: {
                 'Content-Type': 'application/json',
             },
+            // ✅ แก้ไข: เปลี่ยน name เป็น fullname และเพิ่ม gender, birthdate เข้าไป
             body: JSON.stringify({ 
-                name: formData.fullname, 
+                fullname: formData.fullname, 
                 email: formData.email, 
                 password: formData.password, 
-                phone: formData.phone 
+                phone: formData.phone,
+                gender: formData.gender,
+                birthdate: formData.birthdate
             }),
         });
 

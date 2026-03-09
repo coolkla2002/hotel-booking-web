@@ -77,7 +77,7 @@ const AdminLogin = ({ onLogin }) => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-red-500" 
-                placeholder="admin@gmail.com" 
+                
             />
           </div>
           <div>
