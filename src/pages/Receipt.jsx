@@ -55,6 +55,12 @@ const Receipt = () => {
   if (!booking) return null;
 
   const nights = calculateNights(booking.check_in_date, booking.check_out_date);
+  
+  // ✅ คำนวณราคาสุทธิ (หักส่วนลดข้าราชการถ้ามี)
+  console.log("ข้อมูล Booking ที่ส่งมาหน้าใบเสร็จ:", booking);
+  const basePrice = Number(booking.price) || 0;
+  const discount = booking.user_type === 'official' ? 100 : 0;
+  const netTotal = basePrice - discount;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 print:bg-white print:p-0">
@@ -113,14 +119,20 @@ const Receipt = () => {
             {/* ✅ แก้ไขการแสดงผล ID ให้เป็น 3 หลัก (เช่น #001) */}
             <p><strong>Booking ID:</strong> #{String(booking.id).padStart(3, '0')}</p>
             
-            <p><strong>ชื่อผู้จอง:</strong> {booking.fullname || booking.name || booking.user_name || 'คุณลูกค้า'}</p>
-            <p><strong>อีเมล:</strong> {booking.email || '-'}</p>
-            <p><strong>วันที่ทำรายการ:</strong> {new Date(booking.created_at || booking.booking_date).toLocaleString('th-TH', {
+            {/* ✅ แสดงชื่อผู้จอง (Customer Name) */}
+            <p><strong>ชื่อผู้จอง:</strong> {booking.customer_name || booking.fullname || booking.name || booking.user_name || 'ไม่ระบุ'}</p>
+            
+            {/* ✅ แสดงอีเมล (Email) */}
+            <p><strong>อีเมล:</strong> {booking.email || 'ไม่ระบุ'}</p>
+            
+            {/* ✅ แสดงวันที่และเวลา ณ ตอนที่ทำรายการจอง */}
+            <p><strong>วันที่ทำรายการ:</strong> {new Date(booking.created_at || booking.booking_date || Date.now()).toLocaleString('th-TH', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
+                second: '2-digit'
             })} น.</p>
           </div>
           <div className="text-right">
@@ -159,7 +171,7 @@ const Receipt = () => {
                 {booking.room_count || 1} ห้อง
               </td>
               <td className="p-3 border text-right align-top font-bold">
-                {Number(booking.price).toLocaleString()} บาท
+                {basePrice.toLocaleString()} บาท
               </td>
             </tr>
           </tbody>
@@ -174,7 +186,8 @@ const Receipt = () => {
             <tr className="bg-gray-100">
               <td colSpan="3" className="p-3 text-right font-bold border">ยอดชำระสุทธิ (Net Total)</td>
               <td className="p-3 text-right font-bold border text-xl text-blue-800">
-                {Number(booking.price).toLocaleString()} บาท
+                {/* ✅ เปลี่ยนเป็นแสดงราคาสุทธิที่คำนวณหักส่วนลดแล้ว */}
+                {netTotal.toLocaleString()} บาท
               </td>
             </tr>
           </tfoot>

@@ -74,8 +74,6 @@ const AdminManagement = () => {
         formData.append('room_name', currentRoom.name || currentRoom.room_name);
         formData.append('price', currentRoom.price);
         formData.append('room_count', currentRoom.room_count || 15);
-
-        // ✅ เพิ่มบรรทัดนี้ เพื่อส่งสิ่งอำนวยความสะดวกไปด้วย
         formData.append('amenities', currentRoom.amenities || '');
 
         if (selectedFiles.length > 0) {
@@ -239,9 +237,22 @@ const AdminManagement = () => {
                             <button onClick={() => setShowRoomModal(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label><input type="text" required className="w-full border p-2 rounded-lg" value={currentRoom.name || currentRoom.room_name} onChange={e => setCurrentRoom({ ...currentRoom, name: e.target.value })} /></div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label><input type="number" required className="w-full border p-2 rounded-lg" value={currentRoom.price} onChange={e => setCurrentRoom({ ...currentRoom, price: e.target.value })} /></div>
-                            <div><label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด (ห้อง)</label><input type="number" required min="1" className="w-full border p-2 rounded-lg" value={currentRoom.room_count || 15} onChange={e => setCurrentRoom({ ...currentRoom, room_count: e.target.value })} /></div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label>
+                                <input type="text" required className="w-full border p-2 rounded-lg" value={currentRoom.name || currentRoom.room_name} onChange={e => setCurrentRoom({ ...currentRoom, name: e.target.value })} />
+                            </div>
+
+                            {/* แก้ไข: รวมราคาและจำนวนห้องไว้ในแถวเดียวกัน และลบตัวที่ซ้ำออก */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label>
+                                    <input type="number" required className="w-full border p-2 rounded-lg" value={currentRoom.price} onChange={e => setCurrentRoom({ ...currentRoom, price: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด (ห้อง)</label>
+                                    <input type="number" required min="1" className="w-full border p-2 rounded-lg" value={currentRoom.room_count || 15} onChange={e => setCurrentRoom({ ...currentRoom, room_count: e.target.value })} />
+                                </div>
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">รูปภาพห้องพัก</label>
@@ -252,13 +263,7 @@ const AdminManagement = () => {
                                     </div>
                                 )}
                             </div>
-                            {/* ... ช่องกรอกจำนวนห้องทั้งหมด (ของเดิม) ... */}
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด (ห้อง)</label>
-                                <input type="number" required min="1" className="w-full border p-2 rounded-lg" value={currentRoom.room_count || 15} onChange={e => setCurrentRoom({ ...currentRoom, room_count: e.target.value })} />
-                            </div>
 
-                            {/* ✅ เพิ่มช่องกรอกสิ่งอำนวยความสะดวกตรงนี้ */}
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">
                                     สิ่งอำนวยความสะดวก <span className="text-red-500 font-normal">(คั่นด้วยลูกน้ำ เช่น แอร์, ฟรี Wi-Fi, ทีวี)</span>
@@ -271,6 +276,7 @@ const AdminManagement = () => {
                                     onChange={e => setCurrentRoom({ ...currentRoom, amenities: e.target.value })}
                                 />
                             </div>
+
                             <div className="flex gap-3 justify-end pt-4 border-t">
                                 <button type="button" onClick={() => setShowRoomModal(false)} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-xl transition">ยกเลิก</button>
                                 <button type="submit" className="px-8 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition active:scale-95">บันทึก</button>

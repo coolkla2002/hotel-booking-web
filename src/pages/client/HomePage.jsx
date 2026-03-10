@@ -15,7 +15,7 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-// ✅ Import Icons (เพิ่ม MapPin สำหรับส่วนแผนที่)
+// ✅ Import Icons
 import {
   Wifi, Users, Star, Calendar, ArrowRight, Car, Thermometer, Wind, Tv, Coffee,
   CheckCircle, Image as ImageIcon, Search, Info, Clock, AlertCircle, MapPin, Phone, Mail
@@ -87,7 +87,7 @@ const HomePage = () => {
           : (room.amenities || []),
         description: room.description || 'ห้องพักบรรยากาศอบอุ่น กว้างขวาง เหมาะสำหรับการพักผ่อนอย่างแท้จริง พร้อมสิ่งอำนวยความสะดวกครบครัน',
         capacity: room.capacity || 2,
-        room_count: room.room_count // <-- เพิ่มบรรทัดนี้ลงไปเพื่อให้ React รู้จักจำนวนห้องรวม
+        room_count: room.room_count 
       }));
 
       setRooms(formattedRooms);
@@ -127,16 +127,13 @@ const HomePage = () => {
 
     Swal.fire({ title: 'กำลังตรวจสอบห้องว่าง...', didOpen: () => Swal.showLoading() });
 
-    // ✅ ส่วนที่แก้ไข: ดึงข้อมูลห้องทั้งหมดและคำนวณห้องว่าง
     let availableRooms = 0;
-    // เปลี่ยนมาดึงจำนวนรวมจากข้อมูลห้องของแอดมินเป็นหลัก
     let totalRooms = room.room_count ? room.room_count : 15; 
 
     try {
       const res = await fetch(`${API_URL}/check-availability?roomName=${encodeURIComponent(room.name)}&checkIn=${checkInDate}&checkOut=${checkOutDate}`);
       const data = await res.json();
       availableRooms = data.available;
-      // ถ้า API คืนค่า data.total กลับมา ให้ใช้ค่านั้น ถ้าไม่มีก็ใช้ของแอดมิน
       if (data.total > 0) {
           totalRooms = data.total;
       }
@@ -152,7 +149,6 @@ const HomePage = () => {
       return;
     }
 
-    // ✅ ส่วนที่แก้ไข: แสดงจำนวนห้องทั้งหมด และว่างกี่ห้อง
     const { value: roomCount } = await Swal.fire({
       title: `ว่าง ${availableRooms} ห้อง (จากทั้งหมด ${totalRooms} ห้อง)`,
       text: 'กรุณาระบุจำนวนห้องที่ต้องการจอง',
@@ -178,23 +174,17 @@ const HomePage = () => {
         <div class="grid grid-cols-1 gap-4 mt-4">
           <label class="relative border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:bg-blue-50 transition-all block text-left group has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
             <input type="radio" name="user_type_radio" value="general" class="hidden peer" checked>
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="font-bold text-gray-900">บุคคลทั่วไป</p>
-                <p class="text-xs text-gray-500">Standard Rate</p>
-              </div>
-              <div class="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-blue-600 peer-checked:bg-blue-600"></div>
+            <div>
+              <p class="font-bold text-gray-900">บุคคลทั่วไป</p>
+              <p class="text-xs text-gray-500">Standard Rate</p>
             </div>
           </label>
           
-          <label class="relative border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:bg-red-50 transition-all block text-left group has-[:checked]:border-red-600 has-[:checked]:bg-red-50">
+          <label class="relative border-2 border-gray-200 rounded-xl p-4 cursor-pointer hover:bg-blue-50 transition-all block text-left group has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50">
             <input type="radio" name="user_type_radio" value="official" class="hidden peer">
-            <div class="flex justify-between items-center">
-              <div>
-                <p class="font-bold text-gray-900">ข้าราชการ / พนักงานราชการ</p>
-                <p class="text-xs text-red-600 font-medium">ลดทันที 100 บาท ต่อการจอง</p>
-              </div>
-              <div class="w-5 h-5 border-2 border-gray-300 rounded-full peer-checked:border-red-600 peer-checked:bg-red-600"></div>
+            <div>
+              <p class="font-bold text-gray-900">ข้าราชการ / พนักงานราชการ</p>
+              <p class="text-xs text-blue-600 font-medium">ลดทันที 100 บาท ต่อการจอง</p>
             </div>
           </label>
         </div>
@@ -338,21 +328,22 @@ const HomePage = () => {
   };
 
   return (
-    <div className="font-sans text-gray-800 relative bg-white">
+    // ✅ เพิ่ม min-h-screen และบังคับพื้นหลังสีฟ้าอ่อน bg-blue-50 ให้เต็มจอ
+    <div className="font-sans text-gray-800 relative bg-blue-50 min-h-screen">
 
       {/* ================= HERO SECTION ================= */}
-      <div className="relative h-screen w-full overflow-hidden bg-black"><div>
-      <div 
-      className="absolute inset-0 bg-cover bg-center transition-transform duration-[2000ms] hover:scale-105"
-      style={{ 
-        backgroundImage: "url('https://i.ibb.co/nq5MsC0W/654aa3a1-fecb-4d04-a882-225008531d5b-upscayl-4x-upscayl-standard-4x.png')",
-        backgroundSize: '100% 100%', // บังคับให้ขนาดเท่ากับ div พอดี
-        backgroundRepeat: 'no-repeat'
-      }} 
-    >
-    </div>
+      <div className="relative h-screen w-full overflow-hidden bg-black">
+        {/* ✅ ลบ div ที่เกินมาตรงนี้ออกแล้ว */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center transition-transform duration-[2000ms] hover:scale-105"
+          style={{ 
+            backgroundImage: "url('https://i.ibb.co/nq5MsC0W/654aa3a1-fecb-4d04-a882-225008531d5b-upscayl-4x-upscayl-standard-4x.png')",
+            backgroundSize: '100% 100%',
+            backgroundRepeat: 'no-repeat'
+          }} 
+        >
+        </div>
 
-      </div>
         {/* BOOKING BAR */}
         <div className="absolute bottom-0 left-0 w-full z-20">
           <div className="bg-white/95 backdrop-blur-xl shadow-[0_-5px_30px_rgba(0,0,0,0.1)] py-6 px-4 md:px-10 border-t border-gray-100">
@@ -388,20 +379,8 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ================= INTRO SECTION ================= */}
-      {/* <div className="py-24 px-6 bg-stone-50 text-center">
-        <div className="max-w-3xl mx-auto">
-          <span className="text-blue-600 text-xs font-bold tracking-[0.2em] uppercase">Discover Luxury</span>
-          <h2 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 mt-4 mb-8">The Perfect Escape</h2>
-          <p className="text-gray-500 leading-loose text-lg font-light">
-            สัมผัสประสบการณ์การพักผ่อนที่เหนือระดับกับ RCBAT Hotel ที่ซึ่งความหรูหราทันสมัย
-            ผสมผสานกับความสะดวกสบายอย่างลงตัว เราพร้อมมอบช่วงเวลาที่น่าจดจำที่สุดให้กับคุณ
-          </p>
-        </div>
-      </div> */}
-
       {/* ================= ROOMS DISPLAY ================= */}
-      <div id="rooms-section" className="py-20 px-4 md:px-10 max-w-7xl mx-auto">
+      <div id="rooms-section" className="py-20 px-4 md:px-10 max-w-7xl mx-auto" style={{ backgroundColor: '#dbeafe', borderRadius: '24px' }}>
         <div className="flex justify-between items-end mb-12">
           <div>
             <h2 className="text-3xl md:text-4xl font-serif font-bold text-gray-900">ห้องพัก</h2>
@@ -431,41 +410,39 @@ const HomePage = () => {
               <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-gray-100 transition-all duration-300 hover:shadow-2xl flex flex-col lg:flex-row h-full">
 
                 <div className="lg:w-3/5 p-2 bg-gray-50">
-                <div className="grid grid-cols-2 grid-rows-2 gap-2 h-[450px]">
-    {[
-      "https://i.ibb.co/bjp66hXD/a470ece9-4af2-4456-aeb4-abe576738a2f.jpg",
-      "https://i.ibb.co/v6jP65rC/0fc397c0-6fe5-44fa-af75-7438a561d1d0.jpg",
-      "https://i.ibb.co/zVC8zJss/d28617be-6241-4eba-b46b-fdc292c57f06.jpg",
-      "https://i.ibb.co/tTFVrftL/f9e3d921-a105-4f6e-a127-a6ccd4686b41.jpg"
-    ].map((imgUrl, index) => (
-      <div 
-        key={index} 
-        className="relative group overflow-hidden rounded-xl cursor-zoom-in"
-        onClick={() => openImageModal(imgUrl)}
-      >
-        <img 
-          src={imgUrl} 
-          alt={`Room view ${index + 1}`} 
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-        />
-        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <ImageIcon className="text-white w-8 h-8" />
-        </div>
-        {/* แสดงจำนวนผู้พักเฉพาะรูปสุดท้าย */}
-        {index === 3 && (
-          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs flex items-center gap-1">
-            <Users size={12} /> {room.capacity} ท่าน
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
+                  <div className="grid grid-cols-2 grid-rows-2 gap-2 h-[450px]">
+                    {[
+                      "https://i.ibb.co/bjp66hXD/a470ece9-4af2-4456-aeb4-abe576738a2f.jpg",
+                      "https://i.ibb.co/v6jP65rC/0fc397c0-6fe5-44fa-af75-7438a561d1d0.jpg",
+                      "https://i.ibb.co/zVC8zJss/d28617be-6241-4eba-b46b-fdc292c57f06.jpg",
+                      "https://i.ibb.co/tTFVrftL/f9e3d921-a105-4f6e-a127-a6ccd4686b41.jpg"
+                    ].map((imgUrl, index) => (
+                      <div 
+                        key={index} 
+                        className="relative group overflow-hidden rounded-xl cursor-zoom-in"
+                        onClick={() => openImageModal(imgUrl)}
+                      >
+                        <img 
+                          src={imgUrl} 
+                          alt={`Room view ${index + 1}`} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                        />
+                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                          <ImageIcon className="text-white w-8 h-8" />
+                        </div>
+                        {index === 3 && (
+                          <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs flex items-center gap-1">
+                            <Users size={12} /> {room.capacity} ท่าน
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="lg:w-2/5 p-8 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start mb-4">
-
                       <div className="text-right">
                         <p className="text-3xl font-bold text-blue-600">{Number(room.price).toLocaleString()}</p>
                         <p className="text-gray-400 text-sm">บาท / คืน</p>
@@ -480,17 +457,17 @@ const HomePage = () => {
                       <CheckCircle size={16} className="text-green-500" /> สิ่งอำนวยความสะดวก
                     </h4>
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4 mb-8">
-  {room.amenities && room.amenities.length > 0 ? (
-    room.amenities.map((item, idx) => (
-      <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
-        <CheckCircle size={14} className="text-blue-500" />
-        <span>{item}</span>
-      </div>
-    ))
-  ) : (
-    <p className="text-xs text-blue-400 italic col-span-2">เดี่ยวไปแก้</p>
-  )}
-</div>
+                      {room.amenities && room.amenities.length > 0 ? (
+                        room.amenities.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm text-gray-600">
+                            <CheckCircle size={14} className="text-blue-500" />
+                            <span>{item}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-blue-400 italic col-span-2">เดี่ยวไปแก้</p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-auto">
@@ -515,14 +492,14 @@ const HomePage = () => {
         </Swiper>
 
         {rooms.length === 0 && (
-          <div className="text-center py-24 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <div className="text-center py-24 bg-blue-100/50 rounded-xl border border-dashed border-gray-200">
             <p className="text-gray-400 font-light">กำลังโหลดข้อมูลห้องพัก...</p>
           </div>
         )}
       </div>
 
       {/* ================= CONDITIONS SECTION ================= */}
-      <div className="bg-slate-50 py-16 border-t border-gray-200">
+      <div className="py-16 border-t border-blue-100" style={{ backgroundColor: '#dbeafe' }}>
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-10">
             <h2 className="text-2xl font-serif font-bold text-gray-800 flex items-center justify-center gap-2">
@@ -581,8 +558,8 @@ const HomePage = () => {
         </div>
       </div>
 
-      {/* ================= CONTACT & MAP SECTION (ส่วนที่เพิ่มใหม่) ================= */}
-      <div className="bg-white py-16 border-t border-gray-200" id="contact-section">
+      {/* ================= CONTACT & MAP SECTION ================= */}
+      <div className="py-16 border-t border-blue-100" id="contact-section" style={{ backgroundColor: '#dbeafe' }}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
 
@@ -660,6 +637,10 @@ const HomePage = () => {
       </div>
 
       <style>{`
+        /* ✅ บังคับให้พื้นหลังทั้งหน้าเป็นสีฟ้า เพื่อป้องกันขอบสีขาว */
+        body { 
+          background-color: #eff6ff !important; 
+        }
         .flatpickr-calendar {
             box-shadow: 0 10px 40px rgba(0,0,0,0.1) !important;
             border: none !important;

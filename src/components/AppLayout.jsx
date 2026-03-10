@@ -13,7 +13,8 @@ const AppLayout = ({ children, user }) => {
   const location = useLocation();
 
   return (
-    <div className="flex min-h-screen bg-hotel-blue">
+    // ✅ เปลี่ยนพื้นหลังสุดเป็น bg-blue-50 ให้ครอบคลุมทั้งหน้าจอ
+    <div className="flex min-h-screen bg-blue-50">
       {/* --- Sidebar ด้านซ้าย --- */}
       <aside className="w-72 bg-blue-50 p-6 flex flex-col shadow-xl z-10">
         {/* โลโก้ */}
@@ -36,14 +37,15 @@ const AppLayout = ({ children, user }) => {
                 <MapPin /> <span>ตำแหน่งที่ตั้ง/location</span>
             </div>
             {/* ใส่รูปแผนที่จำลอง หรือ Google Maps iframe ตรงนี้ */}
-            <div className="w-full h-64 bg-gray-300 rounded-xl overflow-hidden shadow-md">
+            <div className="w-full h-64 bg-gray-300 rounded-xl overflow-hidden shadow-md border-2 border-white">
                 <img src="https://via.placeholder.com/300x250.png?text=Map+Placeholder" alt="Map" className="w-full h-full object-cover" />
             </div>
         </div>
       </aside>
 
       {/* --- เนื้อหาหลักด้านขวา --- */}
-      <main className="flex-1 flex flex-col">
+      {/* ✅ บังคับให้พื้นที่ด้านขวาทั้งหมดเป็นสีฟ้า bg-blue-50 */}
+      <main className="flex-1 flex flex-col bg-blue-50">
         {/* Header */}
         <header className="bg-white/30 backdrop-blur-md p-4 flex justify-between items-center shadow-sm px-8">
              <h1 className="text-xl font-semibold text-hotel-text">
@@ -55,7 +57,7 @@ const AppLayout = ({ children, user }) => {
              
              {/* ส่วนแสดงผู้ใช้ */}
              <div className="flex items-center space-x-3">
-                 <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden border-2 border-white shadow-sm">
+                 <div className="w-10 h-10 rounded-full bg-blue-100 overflow-hidden border-2 border-white shadow-sm">
                      <img src={user?.avatar || "https://via.placeholder.com/40"} alt="User" />
                  </div>
                  <span className="font-medium text-hotel-text">{user?.name || 'Guest'}</span>
@@ -63,7 +65,8 @@ const AppLayout = ({ children, user }) => {
         </header>
 
         {/* พื้นที่แสดงเนื้อหาของแต่ละหน้า */}
-        <div className="p-8 overflow-y-auto flex-1">
+        {/* ✅ เติม bg-blue-50 ตรงนี้ด้วยเพื่อให้ชัวร์ว่าเนื้อหาข้างในไม่โดนสีขาวทับ */}
+        <div className="p-8 overflow-y-auto flex-1 bg-blue-50">
             {children}
         </div>
       </main>

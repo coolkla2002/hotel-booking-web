@@ -760,12 +760,15 @@ app.get('/my-bookings/:userId', (req, res) => {
             b.booking_status AS status, 
             p.payment_slip AS slip_image,
             b.id_card_image,
-            b.user_type
+            b.user_type,
+            c.name AS customer_name,   -- ✅ เพิ่มการดึงชื่อลูกค้า
+            u.username AS email        -- ✅ เพิ่มการดึงอีเมล
         FROM Booking b
         JOIN Customer c ON b.cus_id = c.cus_id
         JOIN Room r ON b.room_id = r.room_id
         JOIN RoomType rt ON r.room_type_id = rt.room_type_id
         LEFT JOIN Payment p ON b.booking_id = p.booking_id
+        LEFT JOIN UserAccount u ON c.user_id = u.user_id  -- ✅ JOIN ตาราง UserAccount เพื่อดึงอีเมล
         WHERE c.user_id = ? 
         ORDER BY b.booking_id DESC
     `;

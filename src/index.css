@@ -1,5 +1,10 @@
-/* เพิ่มฟอนต์จาก Google Fonts (ถ้าต้องการ) */
+/* index.css */
 @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
+body, html, #root {
+  background-color: #eff6ff !important;
+}

@@ -63,11 +63,15 @@ const ManagerRoute = ({ children }) => {
 // --- ส่วน Layout หลัก (Navbar) ---
 const AppLayout = ({ children, user, onLogout }) => {
   const location = useLocation();
-  const isActive = (path) => location.pathname === path ? "text-blue-600 bg-blue-50" : "text-gray-600 hover:text-blue-600 hover:bg-gray-50";
+  // ปรับสี active ให้เข้มขึ้นนิดนึง
+  const isActive = (path) => location.pathname === path ? "text-blue-700 bg-blue-100" : "text-gray-600 hover:text-blue-700 hover:bg-blue-100";
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 md:pb-0">
-      <nav className="hidden md:flex bg-white shadow-sm px-8 py-4 justify-between items-center sticky top-0 z-50">
+    // ✅ เปลี่ยนจาก bg-blue-50 เป็น bg-blue-100 (สีฟ้าชัดขึ้น)
+    <div className="min-h-screen bg-blue-100 pb-20 md:pb-0" style={{ backgroundColor: '#dbeafe' }}>
+      
+      {/* ✅ ปรับ Navbar ให้เป็นสีฟ้าโปร่งแสง หรือฟ้าอ่อนเข้ากับพื้นหลัง */}
+      <nav className="hidden md:flex bg-blue-100/90 backdrop-blur-md shadow-sm px-8 py-4 justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
         <img 
                 src="images/ChatGPT Image 7 ม.ค. 2569 13_09_46.png" 
@@ -77,14 +81,14 @@ const AppLayout = ({ children, user, onLogout }) => {
            <span className="text-xl font-bold text-gray-800 tracking-tight">RCBAT HOTEL</span>
         </div>
         <div className="flex items-center gap-6">
-           <Link to="/" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>หน้าหลัก</Link>
-           {user && <Link to="/history" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/history' ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}`}>ประวัติการจอง</Link>}
+           <Link to="/" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/' ? 'text-blue-700' : 'text-gray-600 hover:text-blue-700'}`}>หน้าหลัก</Link>
+           {user && <Link to="/history" className={`flex items-center gap-2 font-medium transition-colors ${location.pathname === '/history' ? 'text-blue-700' : 'text-gray-600 hover:text-blue-700'}`}>ประวัติการจอง</Link>}
         </div>
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-4">
                <div className="text-right hidden lg:block"><p className="text-sm font-bold text-gray-800">{user.name}</p><p className="text-xs text-gray-500">{user.email}</p></div>
-               <Link to="/profile" className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"><UserCog className="w-5 h-5 text-gray-600" /></Link>
+               <Link to="/profile" className="p-2 bg-blue-200/50 rounded-full hover:bg-blue-200 transition-colors"><UserCog className="w-5 h-5 text-gray-700" /></Link>
                <button onClick={onLogout} className="flex items-center gap-2 bg-red-50 text-red-600 px-4 py-2 rounded-full font-bold hover:bg-red-100 transition-colors"><LogOut className="w-4 h-4" /><span className="text-sm">ออกระบบ</span></button>
             </div>
           ) : (
@@ -95,7 +99,8 @@ const AppLayout = ({ children, user, onLogout }) => {
 
       <main className="max-w-7xl mx-auto p-4 md:p-6">{children}</main>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 pb-safe z-50">
+      {/* เมนูด้านล่างสำหรับมือถือ */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-blue-50 border-t border-blue-200 flex justify-around p-2 pb-safe z-50">
         <Link to="/" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/')}`}><Home className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">หน้าหลัก</span></Link>
         {user && <Link to="/history" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/history')}`}><FileText className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">ประวัติ</span></Link>}
         {user ? <Link to="/profile" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/profile')}`}><UserCog className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">โปรไฟล์</span></Link> : <Link to="/login" className={`flex flex-col items-center p-2 rounded-lg w-16 ${isActive('/login')}`}><LogIn className="w-6 h-6 mb-1" /><span className="text-[10px] font-medium">เข้าสู่ระบบ</span></Link>}
