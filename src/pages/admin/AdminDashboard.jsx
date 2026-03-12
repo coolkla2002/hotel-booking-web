@@ -332,7 +332,7 @@ const AdminDashboard = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-100 text-gray-600 border-b">
-                                    <th className="p-3">ID</th><th className="p-3">ลูกค้า (User ID)</th><th className="p-3">ห้องพัก</th><th className="p-3">วันเข้า-ออก</th><th className="p-3">ราคา</th><th className="p-3 text-center">หลักฐาน</th><th className="p-3 text-center">ใบเสร็จ</th><th className="p-3">สถานะ</th><th className="p-3 text-center">จัดการ</th>
+                                    <th className="p-3">Booking ID</th><th className="p-3">ลูกค้า (User ID)</th><th className="p-3">ห้องพัก</th><th className="p-3">วันเข้า-ออก</th><th className="p-3">ราคา</th><th className="p-3 text-center">หลักฐาน</th><th className="p-3 text-center">ใบเสร็จ</th><th className="p-3">สถานะ</th><th className="p-3 text-center">จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody>

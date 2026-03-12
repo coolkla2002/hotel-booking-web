@@ -92,12 +92,15 @@ const AdminManagement = () => {
 
     const handleUserSubmit = async (e) => {
         e.preventDefault();
-        await fetch(`${API_URL}/users/${currentUser.id}`, {
+        await fetch(`${API_URL}/users/${currentUser.id || currentUser.user_id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentUser)
+            body: JSON.stringify({
+                ...currentUser,
+                name: currentUser.fullname || currentUser.name // ตรวจสอบให้แน่ใจว่าส่งชื่อไปบันทึกถูกต้อง
+            })
         });
-        await fetch(`${API_URL}/users/${currentUser.id}/role`, {
+        await fetch(`${API_URL}/users/${currentUser.id || currentUser.user_id}/role`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ role: currentUser.role })
@@ -169,7 +172,7 @@ const AdminManagement = () => {
                                 <table className="w-full text-left border-collapse min-w-[1000px]">
                                     <thead className="bg-purple-50 text-purple-900 border-b">
                                         <tr>
-                                            <th className="p-4 font-bold">#</th>
+                                            <th className="p-4 font-bold">ลำดับ</th>
                                             <th className="p-4 font-bold">ชื่อ-สกุล</th>
                                             <th className="p-4 font-bold">อีเมล</th>
                                             <th className="p-4 font-bold">เพศ</th>
@@ -181,15 +184,15 @@ const AdminManagement = () => {
                                     </thead>
                                     <tbody>
                                         {Array.isArray(users) ? users.map((user, index) => (
-                                            <tr key={user.id} className="border-b hover:bg-gray-50">
+                                            <tr key={user.user_id} className="border-b hover:bg-gray-50">
                                                 <td className="p-3 text-gray-500">{index + 1}</td>
-                                                <td className="p-3 font-bold text-blue-900">{user.name}</td>
+                                                <td className="p-3 font-bold text-blue-900">{user.fullname}</td>
                                                 <td className="p-3">{user.email}</td>
                                                 <td className="p-3 text-gray-600">
-                                                    {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender === 'other' ? 'อื่นๆ' : '-'}
+                                                    {user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : user.gender === 'other' ? 'อื่นๆ' : user.gender || '-'}
                                                 </td>
                                                 <td className="p-3 text-gray-600">
-                                                    {user.birthdate ? (
+                                                    {user.birthdate && user.birthdate !== '-' ? (
                                                         new Date(user.birthdate).toLocaleDateString('th-TH', {
                                                             year: 'numeric',
                                                             month: 'long',
@@ -209,8 +212,12 @@ const AdminManagement = () => {
                                                     </span>
                                                 </td>
                                                 <td className="p-3 flex gap-2">
-                                                    <button onClick={() => { setCurrentUser(user); setShowUserModal(true); }} className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200" title="แก้ไข"><Edit size={16} /></button>
-                                                    <button onClick={() => handleDeleteUser(user.id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="ลบ"><Trash2 size={16} /></button>
+                                                    <button onClick={() => { setCurrentUser(user); setShowUserModal(true); }} className="p-2 bg-yellow-100 text-yellow-600 rounded-lg hover:bg-yellow-200" title="แก้ไข">
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteUser(user.user_id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="ลบ">
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         )) : (
@@ -239,14 +246,15 @@ const AdminManagement = () => {
                         <form onSubmit={handleRoomSubmit} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อห้องพัก</label>
-                                <input type="text" required className="w-full border p-2 rounded-lg" value={currentRoom.name || currentRoom.room_name} onChange={e => setCurrentRoom({ ...currentRoom, name: e.target.value })} />
+                                {/* ✅ เติม || "" */}
+                                <input type="text" required className="w-full border p-2 rounded-lg" value={currentRoom.name || currentRoom.room_name || ""} onChange={e => setCurrentRoom({ ...currentRoom, name: e.target.value })} />
                             </div>
 
-                            {/* แก้ไข: รวมราคาและจำนวนห้องไว้ในแถวเดียวกัน และลบตัวที่ซ้ำออก */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">ราคาต่อคืน (บาท)</label>
-                                    <input type="number" required className="w-full border p-2 rounded-lg" value={currentRoom.price} onChange={e => setCurrentRoom({ ...currentRoom, price: e.target.value })} />
+                                    {/* ✅ เติม || "" */}
+                                    <input type="number" required className="w-full border p-2 rounded-lg" value={currentRoom.price || ""} onChange={e => setCurrentRoom({ ...currentRoom, price: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">จำนวนห้องทั้งหมด (ห้อง)</label>
@@ -298,19 +306,20 @@ const AdminManagement = () => {
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">User ID</label>
-                                <input type="text" disabled className="w-full border p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed font-mono" value={currentUser.id || currentUser.user_id} />
+                                <input type="text" disabled className="w-full border p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed font-mono" value={currentUser.id || currentUser.user_id || ""} />
                             </div>
 
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">บทบาท (Role)</label>
-                                <input type="text" disabled className="w-full border p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed font-bold uppercase" value={currentUser.role} />
+                                <input type="text" disabled className="w-full border p-2 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed font-bold uppercase" value={currentUser.role || ""} />
                             </div>
 
                             {['admin', 'manager', 'Super Admin', 'General Manager'].includes(currentUser.role) ? (
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">อีเมล (Email)</label>
-                                        <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
+                                        {/* ✅ เติม || "" */}
+                                        <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email || ""} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-red-600 mb-1">รหัสผ่านใหม่ (ปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
@@ -321,7 +330,8 @@ const AdminManagement = () => {
                                 <>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-สกุล</label>
-                                        <input type="text" required className="w-full border p-2 rounded-lg" value={currentUser.name} onChange={e => setCurrentUser({ ...currentUser, name: e.target.value })} />
+                                        {/* ✅ เติม || "" และรองรับการแก้ไขทั้ง name และ fullname */}
+                                        <input type="text" required className="w-full border p-2 rounded-lg" value={currentUser.fullname || currentUser.name || ""} onChange={e => setCurrentUser({ ...currentUser, fullname: e.target.value, name: e.target.value })} />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -338,18 +348,20 @@ const AdminManagement = () => {
                                             <input
                                                 type="date"
                                                 className="w-full border p-2 rounded-lg"
-                                                value={currentUser.birthdate ? new Date(currentUser.birthdate).toISOString().split('T')[0] : ''}
+                                                value={currentUser.birthdate && currentUser.birthdate !== '-' ? new Date(currentUser.birthdate).toISOString().split('T')[0] : ''}
                                                 onChange={e => setCurrentUser({ ...currentUser, birthdate: e.target.value })}
                                             />
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">อีเมล</label>
-                                        <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
+                                        {/* ✅ เติม || "" */}
+                                        <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email || ""} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทร</label>
-                                        <input type="text" className="w-full border p-2 rounded-lg" value={currentUser.phone} onChange={e => setCurrentUser({ ...currentUser, phone: e.target.value })} />
+                                        {/* ✅ เติม || "" */}
+                                        <input type="text" className="w-full border p-2 rounded-lg" value={currentUser.phone || ""} onChange={e => setCurrentUser({ ...currentUser, phone: e.target.value })} />
                                     </div>
                                 </>
                             )}

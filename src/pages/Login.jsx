@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Lock } from 'lucide-react';
+import Swal from 'sweetalert2'; // ✅ นำเข้า Swal เพื่อใช้ทำป็อปอัปแจ้งเตือน
 import API_URL from "/src/config";
 
 const Login = ({ onLogin }) => {
@@ -20,6 +21,20 @@ const Login = ({ onLogin }) => {
       const data = await response.json();
 
       if (data.success) {
+        
+        // ✅ เพิ่มระบบดักจับ Role: ถ้าเป็น admin หรือ manager ให้เด้งออกทันที
+        if (data.user.role === 'admin' || data.user.role === 'manager') {
+          Swal.fire({
+            icon: 'error',
+            title: 'ไม่อนุญาตให้เข้าใช้งาน',
+            text: 'บัญชีนี้เป็นของผู้ดูแลระบบ กรุณาเข้าสู่ระบบที่หน้า Admin Login',
+            confirmButtonColor: '#3085d6',
+            confirmButtonText: 'ตกลง'
+          });
+          return; // สั่ง return เพื่อหยุดการทำงาน ไม่ให้บันทึกข้อมูลและไม่ให้เข้าหน้าแรก
+        }
+
+        // ถ้าเป็นลูกค้าทั่วไป ให้เข้าสู่ระบบตามปกติ
         console.log("Login สำเร็จ ข้อมูลที่ได้:", data.user); 
         onLogin(data.user);
         navigate('/'); 
