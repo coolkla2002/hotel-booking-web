@@ -23,9 +23,7 @@ const BookingHistory = ({ user }) => {
       fetch(`${API_URL}/my-bookings/${userId}`)
         .then(res => res.json())
         .then(data => {
-            // ป้องกัน Error ถ้า data ไม่ใช่ Array
             if (Array.isArray(data)) {
-                // ✅ แก้ไข: กรองข้อมูลซ้ำออกก่อนเซ็ต State
                 const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
                 setBookings(uniqueBookings);
             } else {
@@ -49,7 +47,7 @@ const BookingHistory = ({ user }) => {
     return diffDays >= 1; 
   };
 
-  // ✅ ฟังก์ชันขอเลื่อนวัน
+  // ✅ ฟังก์ชันขอเลื่อนวัน (คงเดิม)
   const handleReschedule = async (bookingId, roomName, oldCheckIn, oldCheckOut, price, rescheduleCount) => {
     const start = new Date(oldCheckIn);
     const end = new Date(oldCheckOut);
@@ -92,10 +90,8 @@ const BookingHistory = ({ user }) => {
               const checkInDate = selectedDates[0];
               const checkOutDate = new Date(checkInDate);
               checkOutDate.setDate(checkOutDate.getDate() + nights);
-
               selectedNewCheckIn = checkInDate;
               calculatedNewCheckOut = checkOutDate;
-
               document.getElementById('checkout-date-text').innerText = 
                 `${checkOutDate.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
               document.getElementById('checkout-date-text').style.color = "#2563EB"; 
@@ -113,13 +109,11 @@ const BookingHistory = ({ user }) => {
           Swal.showValidationMessage('กรุณาระบุเหตุผล');
           return false;
         }
-        
         const formatDate = (date) => {
             const d = new Date(date);
             d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
             return d.toISOString().split('T')[0];
         };
-
         return {
           new_check_in: formatDate(selectedNewCheckIn),
           new_check_out: formatDate(calculatedNewCheckOut),
@@ -140,22 +134,9 @@ const BookingHistory = ({ user }) => {
             reason: formValues.reason
           })
         });
-
         const data = await response.json();
         if (data.success) {
-          Swal.fire('สำเร็จ', 'ส่งคำขอเลื่อนวันเรียบร้อยแล้ว รอแอดมินอนุมัติ', 'success');
-          if (user) {
-             const userId = user.id || user.user_id || user.ID;
-             fetch(`${API_URL}/my-bookings/${userId}`)
-              .then(res => res.json())
-              .then(data => {
-                  // ✅ แก้ไข: กรองข้อมูลที่ id ซ้ำกันออก
-                  if (Array.isArray(data)) {
-                      const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
-                      setBookings(uniqueBookings);
-                  }
-              });
-          }
+          Swal.fire('สำเร็จ', 'ส่งคำขอเลื่อนวันเรียบร้อยแล้ว รอแอดมินอนุมัติ', 'success').then(() => window.location.reload());
         } else {
           Swal.fire('เกิดข้อผิดพลาด', data.message, 'error');
         }
@@ -166,7 +147,7 @@ const BookingHistory = ({ user }) => {
     }
   };
 
-  // ✅ ฟังก์ชันขอยกเลิกการจอง
+  // ✅ ฟังก์ชันขอยกเลิกการจอง (แก้ไขให้รองรับ FormData และเลขบัญชีตาม Backend)
   const handleCancel = async (bookingId, checkInDate) => {
     if (!canModify(checkInDate)) {
       Swal.fire('ไม่สามารถยกเลิกได้', 'ต้องยกเลิกจองล่วงหน้าอย่างน้อย 24 ชั่วโมง', 'error');
@@ -184,21 +165,21 @@ const BookingHistory = ({ user }) => {
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">1. เหตุผลการยกเลิก <span class="text-red-500">*</span></label>
-                <textarea id="cancel-reason" class="swal2-textarea m-0 w-full h-20 text-sm" placeholder="เช่น ติดธุระด่วน, ป่วย, เปลี่ยนแผนการเดินทาง..."></textarea>
+                <label class="block text-sm font-bold text-gray-700 mb-1 text-left">1. เหตุผลการยกเลิก <span class="text-red-500">*</span></label>
+                <textarea id="cancel-reason" class="swal2-textarea m-0 w-full h-20 text-sm" placeholder="เช่น ติดธุระด่วน, เปลี่ยนแผนการเดินทาง..."></textarea>
             </div>
 
             <div class="border-t border-gray-200 pt-4 mt-2">
-                <p class="text-sm font-bold text-blue-900 mb-3">ช่องทางรับเงินคืน (กรุณาระบุอย่างน้อย 1 ช่องทาง)</p>
+                <p class="text-sm font-bold text-blue-900 mb-3 text-left">ช่องทางรับเงินคืน (ระบุเลขบัญชี หรือ แนบ QR Code)</p>
                 
                 <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">รายละเอียดบัญชี / พร้อมเพย์</label>
-                    <textarea id="refund-details" class="swal2-textarea m-0 w-full h-20 text-sm bg-gray-50" placeholder="ระบุชื่อธนาคาร, เลขบัญชี, ชื่อบัญชี หรือ เบอร์พร้อมเพย์"></textarea>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 text-left">รายละเอียดบัญชี / พร้อมเพย์</label>
+                    <textarea id="refund-details" class="swal2-textarea m-0 w-full h-20 text-sm bg-gray-50" placeholder="ระบุชื่อธนาคาร, เลขบัญชี, ชื่อบัญชี"></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">หรือแนบภาพ QR Code รับเงิน</label>
-                    <input type="file" id="refund-image" accept="image/*" class="w-full text-sm border border-gray-300 rounded p-2 bg-white">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1 text-left">หรือแนบภาพ QR Code รับเงิน</label>
+                    <input type="file" id="refund-qr" accept="image/*" class="w-full text-sm border border-gray-300 rounded p-2 bg-white">
                 </div>
             </div>
         </div>
@@ -211,19 +192,19 @@ const BookingHistory = ({ user }) => {
       focusConfirm: false,
       preConfirm: () => {
         const reason = document.getElementById('cancel-reason').value;
-        const refundDetails = document.getElementById('refund-details').value;
-        const refundImage = document.getElementById('refund-image').files[0];
+        const details = document.getElementById('refund-details').value;
+        const file = document.getElementById('refund-qr').files[0];
 
         if (!reason) {
           Swal.showValidationMessage('กรุณาระบุเหตุผลการยกเลิก');
           return false;
         }
-        if (!refundDetails && !refundImage) {
-          Swal.showValidationMessage('กรุณาระบุช่องทางการรับเงินคืน (เลขบัญชี หรือ แนบ QR Code)');
+        if (!details && !file) {
+          Swal.showValidationMessage('กรุณาระบุเลขบัญชี หรือ แนบไฟล์ QR Code');
           return false;
         }
 
-        return { reason, refundDetails, refundImage };
+        return { reason, details, file };
       }
     });
 
@@ -234,37 +215,28 @@ const BookingHistory = ({ user }) => {
         const formData = new FormData();
         formData.append('booking_id', bookingId);
         formData.append('reason', formValues.reason);
-        formData.append('refund_details', formValues.refundDetails || '');
-        if (formValues.refundImage) {
-            formData.append('refund_image', formValues.refundImage);
+        formData.append('refund_details', formValues.details || '');
+        
+        // ส่งไฟล์โดยใช้ชื่อ 'refund_qr' ให้ตรงกับ upload.fields ใน Backend
+        if (formValues.file) {
+          formData.append('refund_qr', formValues.file);
         }
 
-        const response = await fetch(`${API_URL}/cancel-booking`, {
+        const response = await fetch(`${API_URL}/cancel-bookings`, {
           method: 'POST',
           body: formData 
         });
 
         const data = await response.json();
         if (data.success) {
-          Swal.fire('ส่งคำขอสำเร็จ', 'ระบบได้รับคำขอยกเลิกแล้ว กรุณารอตรวจสอบและโอนเงินคืน (20%) ภายในระยะเวลาทำการ', 'success');
-          if (user) {
-             const userId = user.id || user.user_id || user.ID;
-             fetch(`${API_URL}/my-bookings/${userId}`)
-              .then(res => res.json())
-              .then(data => {
-                  // ✅ แก้ไข: กรองข้อมูลที่ id ซ้ำกันออก
-                  if (Array.isArray(data)) {
-                      const uniqueBookings = data.filter((v, i, a) => a.findIndex(v2 => (v2.id === v.id)) === i);
-                      setBookings(uniqueBookings);
-                  }
-              });
-          }
+          Swal.fire('ส่งคำขอสำเร็จ', 'ระบบได้รับคำขอยกเลิกแล้ว รอเจ้าหน้าที่ตรวจสอบเงินคืน (20%)', 'success')
+            .then(() => window.location.reload());
         } else {
           Swal.fire('ผิดพลาด', data.message || 'ไม่สามารถยกเลิกได้', 'error');
         }
       } catch (err) {
         console.error(err);
-        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้', 'error');
+        Swal.fire('Error', 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ (ตรวจสอบ API URL)', 'error');
       }
     }
   };
@@ -279,7 +251,6 @@ const BookingHistory = ({ user }) => {
     <div className="max-w-4xl mx-auto p-6 min-h-screen">
       <h2 className="text-3xl font-bold mb-6 text-gray-800 border-l-4 border-blue-600 pl-4">ประวัติการจองห้องพัก</h2>
 
-      {/* Filter Section */}
       <div className="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-col md:flex-row gap-4 items-center">
         <div className="relative w-full md:w-1/2">
             <Calendar className="absolute left-3 top-2.5 text-gray-400" size={18} />
@@ -304,7 +275,6 @@ const BookingHistory = ({ user }) => {
         {filteredBookings.length === 0 ? (
           <div className="text-center text-gray-500 py-10 bg-white rounded-xl shadow-sm">📭 ยังไม่มีประวัติการจอง</div>
         ) : (
-          // ✅ แก้ไข: เพิ่ม index เข้าไปใน key เพื่อป้องกัน React ฟ้อง Error 100%
           filteredBookings.map((item, index) => (
             <div key={`${item.id}-${index}`} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -335,11 +305,6 @@ const BookingHistory = ({ user }) => {
                         <Calendar size={14} />
                         {new Date(item.check_in_date).toLocaleDateString('th-TH')} - {new Date(item.check_out_date).toLocaleDateString('th-TH')}
                     </p>
-                    {item.reschedule_reason && (
-                       <p className="text-xs text-orange-600 mt-2 bg-orange-50 p-2 rounded border border-orange-100 inline-block">
-                         📝 เหตุผลขอเลื่อน: {item.reschedule_reason}
-                       </p>
-                    )}
                 </div>
 
                 <div className="flex flex-col items-end gap-2 w-full md:w-auto">

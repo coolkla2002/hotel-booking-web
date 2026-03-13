@@ -310,19 +310,19 @@ app.put('/users/:id', (req, res) => {
         let paramsCustomer = [];
 
         if (results.length > 0) {
-            // ✅ แก้ไข UPDATE: ตัด finalsex ที่เกินออก 1 ตัว
             sqlCustomer = `
                 UPDATE Customer 
                 SET name = ?, email = ?, phone = ?, sex = ?, birthdate = ?
                 WHERE user_id = ?
             `;
+            // ต้องมี 6 ตัวแปร: name, email, phone, sex, birthdate, user_id
             paramsCustomer = [finalName, email, phone, finalsex, finalBirthdate, userId];
         } else {
-            // ✅ แก้ไข INSERT: ตัด ? ที่เกินออก 1 ตัว และตัด finalsex ที่ซ้ำออก
             sqlCustomer = `
                 INSERT INTO Customer (user_id, name, email, phone, sex, birthdate)
                 VALUES (?, ?, ?, ?, ?, ?)
             `;
+            // ต้องมี 6 ตัวแปร: user_id, name, email, phone, sex, birthdate
             paramsCustomer = [userId, finalName, email, phone, finalsex, finalBirthdate];
         }
 
@@ -767,17 +767,45 @@ app.post('/admin/approve-reschedule', (req, res) => {
     });
 });
 
-app.post('/cancel-bookings', upload.fields([{ name: 'refund_image', maxCount: 1 }, { name: 'refund_qr', maxCount: 1 }]), (req, res) => {
+app.post('/cancel-bookings', upload.fields([
+    { name: 'refund_image', maxCount: 1 }, 
+    { name: 'refund_qr', maxCount: 1 }
+]), (req, res) => {
+    // รับค่าจาก body
     const booking_id = req.body.booking_id || req.body.id;
     const reason = req.body.reason || req.body.cancel_reason;
     const refund_details = req.body.refund_details || req.body.bank_account;
-    let refund_image = (req.files && req.files['refund_image']) ? req.files['refund_image'][0].filename : (req.files && req.files['refund_qr']) ? req.files['refund_qr'][0].filename : null;
+    
+    // ดึงชื่อไฟล์จาก multer (รองรับทั้งชื่อ refund_image และ refund_qr)
+    let refund_image = null;
+    if (req.files) {
+        if (req.files['refund_image']) refund_image = req.files['refund_image'][0].filename;
+        else if (req.files['refund_qr']) refund_image = req.files['refund_qr'][0].filename;
+    }
 
-    if (!booking_id) return res.status(400).json({ success: false, message: 'Booking ID is required' });
+    if (!booking_id) {
+        return res.status(400).json({ success: false, message: 'ไม่พบ Booking ID' });
+    }
 
-    const sql = `UPDATE Booking SET booking_status = 'pending_cancel', cancel_reason = ?, refund_details = ?, refund_image = ? WHERE booking_id = ?`;
-    db.query(sql, [reason, refund_details, refund_image, booking_id], (err) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
+    // ✅ แนะนำ: ตรวจสอบชื่อ Table และ Column ให้ตรงกับ DB ของคุณ
+    // ในที่นี้สมมติว่าตารางชื่อ Booking และคอลัมน์ตรงตามโค้ดด้านล่าง
+    const sql = `UPDATE Booking SET 
+                 booking_status = 'pending_cancel', 
+                 cancel_reason = ?, 
+                 refund_details = ?, 
+                 refund_image = ? 
+                 WHERE booking_id = ?`;
+
+    db.query(sql, [reason, refund_details, refund_image, booking_id], (err, result) => {
+        if (err) {
+            console.error("Database Error:", err); // พิมพ์ Error ลงหน้าจอ Terminal ของ Node.js
+            return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการอัปเดตฐานข้อมูล: ' + err.message });
+        }
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจองที่ระบุ' });
+        }
+
         res.json({ success: true, message: 'ส่งคำขอยกเลิกเรียบร้อยแล้ว' });
     });
 });
@@ -1046,16 +1074,9 @@ app.post('/bookings', upload.fields([
                 // 4. บันทึกลงตาราง Booking
                 const sqlBooking = `
     INSERT INTO Booking (
-        cus_id, 
-        room_id, 
-        room_count, 
-        total_amount,   -- ตรวจสอบว่าใน DB ชื่อนี้ไหม (บางรูปเห็นเป็น amount เฉยๆ)
-        check_in_date, 
-        check_out_date, 
-        booking_status, -- ในรูป DB ของคุณคือคอลัมน์นี้
-        user_type, 
-        id_card_image, 
-        booking_date
+        cus_id, room_id, room_count, total_amount, 
+        check_in_date, check_out_date, booking_status, 
+        user_type, id_card_image, booking_date
     ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())
 `;
 
@@ -1078,10 +1099,6 @@ app.post('/bookings', upload.fields([
         console.error(error);
         res.status(500).json({ success: false, message: 'ระบบเกิดข้อผิดพลาดร้ายแรง' });
     }
-});
-
-app.get('/check-route', (req, res) => {
-    res.json({ message: "Server is working!", timestamp: new Date() });
 });
 
 const PORT = process.env.PORT || 3001;

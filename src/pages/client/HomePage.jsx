@@ -74,7 +74,7 @@ const HomePage = () => {
       const res = await fetch(`${API_URL}/rooms`);
       if (!res.ok) throw new Error("ดึงข้อมูลห้องไม่สำเร็จ");
       const data = await res.json();
-  
+
       const formattedRooms = data.map(room => ({
         ...room,
         image: getImageUrl(room.image_url),
@@ -85,15 +85,15 @@ const HomePage = () => {
           getImageUrl(room.picture3),
           getImageUrl(room.picture4)
         ].filter(img => img !== FALLBACK_IMAGE), // กรองเอาเฉพาะรูปที่มีจริง (ถ้าว่างจะเป็น fallback)
-        
-        amenities: typeof room.amenities === 'string' 
-          ? room.amenities.split(',').map(item => item.trim()) 
+
+        amenities: typeof room.amenities === 'string'
+          ? room.amenities.split(',').map(item => item.trim())
           : (room.amenities || []),
         description: room.description || 'ห้องพักบรรยากาศอบอุ่น...',
         capacity: room.capacity || 2,
-        room_count: room.room_count 
+        room_count: room.room_count
       }));
-  
+
       setRooms(formattedRooms);
     } catch (err) {
       console.error("Error fetching rooms:", err);
@@ -132,14 +132,14 @@ const HomePage = () => {
     Swal.fire({ title: 'กำลังตรวจสอบห้องว่าง...', didOpen: () => Swal.showLoading() });
 
     let availableRooms = 0;
-    let totalRooms = room.room_count ? room.room_count : 15; 
+    let totalRooms = room.room_count ? room.room_count : 15;
 
     try {
-      const res = await fetch(`${API_URL}/check-availability?roomName=${encodeURIComponent(room.name)}&checkIn=${checkInDate}&checkOut=${checkOutDate}`);
+      const res = await fetch(`${API_URL}/check-availability?roomName=${encodeURIComponent(room.typename || room.name)}&checkIn=${checkInDate}&checkOut=${checkOutDate}`);
       const data = await res.json();
       availableRooms = data.available;
       if (data.total > 0) {
-          totalRooms = data.total;
+        totalRooms = data.total;
       }
       Swal.close();
     } catch (e) {
@@ -222,7 +222,7 @@ const HomePage = () => {
              <label class="block text-xs font-bold text-gray-500 uppercase">1. ช่องทางชำระเงิน</label>
              <select id="payment_method" class="w-full border-2 border-gray-100 rounded-lg p-2.5 text-sm focus:border-blue-500 outline-none">
                 <option value="bank_transfer">โอนผ่านธนาคาร (กสิกรไทย 012-3-45678-9)</option>
-                <option value="qr_code">QR Code PromptPay (แสดงรหัสสแกน)</option>
+                <option value="qr_code">QR Code PromptPay</option>
              </select>
            </div>
 
@@ -248,11 +248,8 @@ const HomePage = () => {
         const methodSelect = document.getElementById('payment_method');
         const qrDisplay = document.getElementById('qr_display');
         methodSelect.addEventListener('change', (e) => {
-          if (e.target.value === 'qr_code') {
-            qrDisplay.classList.remove('hidden');
-          } else {
-            qrDisplay.classList.add('hidden');
-          }
+          if (e.target.value === 'qr_code') qrDisplay.classList.remove('hidden');
+          else qrDisplay.classList.add('hidden');
         });
       },
       showCancelButton: true,
@@ -278,26 +275,29 @@ const HomePage = () => {
 
     if (!formValues) return;
 
-    Swal.fire({ title: 'กำลังประมวลผล...', didOpen: () => Swal.showLoading() });
+    Swal.fire({ title: 'กำลังบันทึกข้อมูล...', didOpen: () => Swal.showLoading() });
 
     try {
       const formData = new FormData();
-      formData.append('user_id', user.id);
-      formData.append('room_id', room.id);
-      formData.append('room_name', room.name);
+      // ✅ ส่งข้อมูลให้ครบตามที่ Backend ต้องการ
+      formData.append('user_id', user.user_id || user.id);
+      formData.append('room_name', room.typename || room.name);
+      formData.append('price', finalPrice);
+      formData.append('total_amount', finalPrice); // ส่งเผื่อไว้สำหรับบาง Route
       formData.append('check_in_date', checkInDate);
       formData.append('check_out_date', checkOutDate);
-      formData.append('price', finalPrice);
+      formData.append('room_count', parseInt(roomCount)); 
       formData.append('payment_method', formValues.method);
       formData.append('user_type', userType);
-      formData.append('slip', formValues.slip);
-      formData.append('room_count', roomCount);
 
+      // ✅ ส่งไฟล์หลักฐาน (สำคัญมาก: ห้ามลืม append 'slip')
+      formData.append('slip', formValues.slip);
       if (formValues.govCard) formData.append('gov_card', formValues.govCard);
 
-      const response = await fetch('https://hotel-booking-web-kfks.onrender.com/bookings', {
+      const response = await fetch(`${API_URL}/bookings`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
 
       const data = await response.json();
@@ -305,14 +305,15 @@ const HomePage = () => {
         Swal.fire({
           icon: 'success',
           title: 'การจองสำเร็จ!',
-          text: `จอง ${roomCount} ห้อง เรียบร้อยแล้ว`,
+          text: `จอง ${roomCount} ห้อง เรียบร้อยแล้ว ระบบกำลังตรวจสอบสลิป`,
           timer: 3000
         }).then(() => navigate('/history'));
       } else {
-        Swal.fire('Error', data.message, 'error');
+        Swal.fire('การจองล้มเหลว', data.message, 'error');
       }
     } catch (err) {
-      Swal.fire('Error', 'ไม่สามารถติดต่อ Server ได้', 'error');
+      console.error(err);
+      Swal.fire('Error', 'ไม่สามารถติดต่อ Server ได้ กรุณาลองใหม่', 'error');
     }
   };
 
@@ -338,13 +339,13 @@ const HomePage = () => {
       {/* ================= HERO SECTION ================= */}
       <div className="relative h-screen w-full overflow-hidden bg-black">
         {/* ✅ ลบ div ที่เกินมาตรงนี้ออกแล้ว */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center transition-transform duration-[2000ms] hover:scale-105"
-          style={{ 
+          style={{
             backgroundImage: "url('https://i.ibb.co/nq5MsC0W/654aa3a1-fecb-4d04-a882-225008531d5b-upscayl-4x-upscayl-standard-4x.png')",
             backgroundSize: '100% 100%',
             backgroundRepeat: 'no-repeat'
-          }} 
+          }}
         >
         </div>
 
@@ -421,15 +422,15 @@ const HomePage = () => {
                       "https://i.ibb.co/zVC8zJss/d28617be-6241-4eba-b46b-fdc292c57f06.jpg",
                       "https://i.ibb.co/tTFVrftL/f9e3d921-a105-4f6e-a127-a6ccd4686b41.jpg"
                     ].map((imgUrl, index) => (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className="relative group overflow-hidden rounded-xl cursor-zoom-in"
                         onClick={() => openImageModal(imgUrl)}
                       >
-                        <img 
-                          src={imgUrl} 
-                          alt={`Room view ${index + 1}`} 
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                        <img
+                          src={imgUrl}
+                          alt={`Room view ${index + 1}`}
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                           <ImageIcon className="text-white w-8 h-8" />
@@ -479,8 +480,8 @@ const HomePage = () => {
                       onClick={() => handleBooking(room)}
                       disabled={!checkInDate || !checkOutDate}
                       className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-blue-500/30 hover:-translate-y-1 transition-all duration-300 flex items-center justify-center gap-2 ${!checkInDate || !checkOutDate
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
                         }`}
                     >
                       {(!checkInDate || !checkOutDate) ? 'กรุณาเลือกวันเข้าพัก' : `จอง ${room.name}`}
@@ -629,7 +630,8 @@ const HomePage = () => {
                 <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500"></div>
 
                 {/* Overlay Text */}
-                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
+                <div className="absolute bottom-4 left-4 bg-whit
+                e/90 backdrop-blur px-4 py-2 rounded-lg shadow-lg">
                   <p className="text-xs font-bold text-gray-500 uppercase">Location</p>
                   <p className="text-sm font-bold text-gray-800">RCBAT Hotel</p>
                 </div>
