@@ -295,7 +295,7 @@ const HomePage = () => {
 
       if (formValues.govCard) formData.append('gov_card', formValues.govCard);
 
-      const response = await fetch(`${API_URL}/bookings`, {
+      const response = await fetch('${API_URL}/reserve', {
         method: 'POST',
         body: formData
       });

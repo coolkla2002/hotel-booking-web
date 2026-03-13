@@ -715,7 +715,7 @@ app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov
     }
 });
 
-app.post('/reserve', bookingUpload, (req, res) => {
+app.post('/bookings', bookingUpload, (req, res) => {
     req.url = '/booking';
     app.handle(req, res);
 });
