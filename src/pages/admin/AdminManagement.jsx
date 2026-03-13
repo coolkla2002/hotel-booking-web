@@ -214,7 +214,7 @@ const AdminManagement = () => {
                                                 <td className="p-3 text-gray-500">{index + 1}</td>
                                                 <td className="p-3 font-bold text-blue-900">{user.fullname}</td>
                                                 <td className="p-3">{user.email}</td>
-                                                <td className="p-3 text-gray-600">{user.gender === 'male' ? 'ชาย' : user.gender === 'female' ? 'หญิง' : '-'}</td>
+                                                <td className="p-3 text-gray-600">{user.sex === 'male' ? 'ชาย' : user.sex === 'female' ? 'หญิง' : '-'}</td>
                                                 <td className="p-3 text-gray-600">{user.birthdate ? new Date(user.birthdate).toLocaleDateString('th-TH') : '-'}</td>
                                                 <td className="p-3">{formatPhoneNumber(user.phone)}</td>
                                                 <td className="p-3 text-center">

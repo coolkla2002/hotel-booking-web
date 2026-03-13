@@ -67,7 +67,7 @@ const Register = () => {
                 email: formData.email, 
                 password: formData.password, 
                 phone: formData.phone,
-                gender: formData.gender,
+                sex: formData.sex,
                 birthdate: formData.birthdate
             }),
         });
@@ -171,8 +171,8 @@ const Register = () => {
                 </div>
                 <div>
                   <label className="block text-blue-900 font-bold mb-2 text-lg">เพศ</label>
-                  <select name="gender" onChange={handleChange} value={formData.gender} className="w-full p-4 rounded-2xl bg-gray-100/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg shadow-inner appearance-none">
-                    <option value="">Gender</option>
+                  <select name="sex" onChange={handleChange} value={formData.sex} className="w-full p-4 rounded-2xl bg-gray-100/80 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-700 text-lg shadow-inner appearance-none">
+                    <option value="">sex</option>
                     <option value="male">ชาย</option>
                     <option value="female">หญิง</option>
                     <option value="other">อื่นๆ</option>

@@ -64,7 +64,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
         const payload = {
             id: user.id || user.user_id,
             name: formData.name || '',
-            gender: formData.gender || '',
+            sex: formData.sex || '',
             birthdate: formData.birthdate || '',
             phone: formData.phone || ''
         };
@@ -147,7 +147,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-blue-900 font-bold mb-2 text-2xl">เพศ</label>
-              <select name="gender" value={formData.gender} onChange={handleChange}
+              <select name="sex" value={formData.sex} onChange={handleChange}
                   className="w-full p-4 rounded-2xl bg-gray-100 border-2 border-transparent focus:border-blue-400 focus:outline-none text-gray-800 text-xl font-bold shadow-inner appearance-none">
                 <option value="">เลือกเพศ</option>
                 <option value="male">ชาย</option>
