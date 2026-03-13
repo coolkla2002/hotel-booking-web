@@ -365,14 +365,15 @@ app.put('/users/:id', (req, res) => {
 app.delete('/users/:id', (req, res) => {
     const { id } = req.params;
     if (id == 1) return res.status(403).json({ message: "Cannot delete Super Admin" });
+    
+    // 1. ลบจาก Customer ก่อน
     db.query('DELETE FROM Customer WHERE user_id = ?', [id], (err) => {
         if (err) return res.status(500).json(err);
-        db.query('DELETE FROM Admin WHERE user_id = ?', [id], (err) => {
-            if (err) return res.status(500).json(err);
-            db.query('DELETE FROM UserAccount WHERE user_id = ?', [id], (err) => {
-                if (err) return res.status(500).json(err);
-                res.json({ message: 'User deleted' });
-            });
+        
+        // 2. ลบจาก UserAccount เลย (ไม่ต้องผ่าน Admin แล้ว)
+        db.query('DELETE FROM UserAccount WHERE user_id = ?', [id], (err2) => {
+            if (err2) return res.status(500).json(err2);
+            res.json({ message: 'User deleted' });
         });
     });
 });

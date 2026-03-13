@@ -2,10 +2,16 @@ const nodemailer = require('nodemailer');
 
 // 1. ตั้งค่าบัญชีที่จะใช้ส่ง (Transporter)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // สำคัญมาก: ต้องเป็น true สำหรับพอร์ต 465
     auth: {
-        user: 'chakkrit.ma@rmuti.ac.th', // อีเมลของโรงแรม
-        pass: 'xfghnamtgsqxqzvi'   // รหัสผ่าน 16 ตัวที่ได้จาก Google
+        user: process.env.EMAIL_USER, // อีเมลของคุณ
+        pass: process.env.EMAIL_PASS  // รหัสผ่าน (ต้องเป็น App Password 16 ตัว)
+    },
+    // เพิ่มบรรทัดนี้ลงไปเพื่อป้องกัน Timeout บน Server บางประเภท
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
