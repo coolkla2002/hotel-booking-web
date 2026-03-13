@@ -359,7 +359,7 @@ const AdminManagement = () => {
                                         <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email || ""} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทร</label>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">เบอรโทร</label>
                                         {/* ✅ เติม || "" */}
                                         <input type="text" className="w-full border p-2 rounded-lg" value={currentUser.phone || ""} onChange={e => setCurrentUser({ ...currentUser, phone: e.target.value })} />
                                     </div>
