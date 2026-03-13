@@ -74,22 +74,26 @@ const HomePage = () => {
       const res = await fetch(`${API_URL}/rooms`);
       if (!res.ok) throw new Error("ดึงข้อมูลห้องไม่สำเร็จ");
       const data = await res.json();
-
+  
       const formattedRooms = data.map(room => ({
         ...room,
         image: getImageUrl(room.image_url),
+        // แก้ไขตรง subImages ให้ดึงรูป 1-4 มาใส่
         subImages: [
           getImageUrl(room.image_url),
-          getImageUrl(room.image_url)
-        ],
+          getImageUrl(room.picture2),
+          getImageUrl(room.picture3),
+          getImageUrl(room.picture4)
+        ].filter(img => img !== FALLBACK_IMAGE), // กรองเอาเฉพาะรูปที่มีจริง (ถ้าว่างจะเป็น fallback)
+        
         amenities: typeof room.amenities === 'string' 
           ? room.amenities.split(',').map(item => item.trim()) 
           : (room.amenities || []),
-        description: room.description || 'ห้องพักบรรยากาศอบอุ่น กว้างขวาง เหมาะสำหรับการพักผ่อนอย่างแท้จริง พร้อมสิ่งอำนวยความสะดวกครบครัน',
+        description: room.description || 'ห้องพักบรรยากาศอบอุ่น...',
         capacity: room.capacity || 2,
         room_count: room.room_count 
       }));
-
+  
       setRooms(formattedRooms);
     } catch (err) {
       console.error("Error fetching rooms:", err);

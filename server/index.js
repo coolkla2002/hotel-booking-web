@@ -29,7 +29,7 @@ app.use(cors({
 }));
 
 // Config Uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 const uploadDir = path.join(__dirname, 'uploads'); 
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir); 
 
@@ -399,36 +399,75 @@ app.get('/rooms', (req, res) => {
     });
 });
 
-app.post('/rooms', upload.single('room_image'), (req, res) => {
+app.post('/rooms', upload.array('room_image', 4), (req, res) => {
     const { room_name, price, room_count } = req.body;
-    const image_url = req.file ? req.file.filename : ''; 
+    
+    // จัดการชื่อไฟล์รูปภาพทั้ง 4 (ถ้ามีไม่ครบจะเป็น null)
+    const pics = [
+        req.files[0] ? req.files[0].filename : '',
+        req.files[1] ? req.files[1].filename : null,
+        req.files[2] ? req.files[2].filename : null,
+        req.files[3] ? req.files[3].filename : null
+    ];
+
     const count = room_count ? parseInt(room_count) : 15; 
 
-    db.query('INSERT INTO RoomType (typename, price, picture) VALUES (?, ?, ?)', [room_name, price, image_url], (err, result) => {
+    // เพิ่มรูป 1-4 ลงใน RoomType
+    db.query('INSERT INTO RoomType (typename, price, picture, picture2, picture3, picture4) VALUES (?, ?, ?, ?, ?, ?)', 
+    [room_name, price, pics[0], pics[1], pics[2], pics[3]], (err, result) => {
         if (err) return res.status(500).json(err);
         const newRoomTypeId = result.insertId;
         let roomValues = [];
-        for(let i=1; i<=count; i++) roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId, image_url]);
-        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture) VALUES ?', [roomValues], (err2) => {
+        
+        // เพิ่มรูป 1-4 ลงในทุกลูกของ Room
+        for(let i=1; i<=count; i++) {
+            roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId, pics[0], pics[1], pics[2], pics[3]]);
+        }
+
+        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture, picture2, picture3, picture4) VALUES ?', [roomValues], (err2) => {
             if (err2) return res.status(500).json(err2);
-            res.json({ message: 'Room added successfully' });
+            res.json({ message: 'Room added successfully with 4 images' });
         });
     });
 });
 
-app.put('/rooms/:id', upload.single('room_image'), (req, res) => {
+app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
     const { id } = req.params;
     const { room_name, price, room_count, amenities } = req.body; 
+    
     let sql = 'UPDATE RoomType SET typename=?, price=?, amenities=?';
     let params = [room_name, price, amenities]; 
 
-    if (req.file) { sql += ', picture=?'; params.push(req.file.filename); }
-    sql += ' WHERE room_type_id=?'; params.push(id);
+    // ถ้ามีการอัปโหลดรูปใหม่ (จะอัปเกรดเป็นชุดใหม่ทั้งหมด)
+    if (req.files && req.files.length > 0) {
+        sql += ', picture=?, picture2=?, picture3=?, picture4=?';
+        params.push(
+            req.files[0] ? req.files[0].filename : null,
+            req.files[1] ? req.files[1].filename : null,
+            req.files[2] ? req.files[2].filename : null,
+            req.files[3] ? req.files[3].filename : null
+        );
+    }
+    
+    sql += ' WHERE room_type_id=?'; 
+    params.push(id);
 
     db.query(sql, params, (err) => {
         if (err) return res.status(500).json(err);
-        if (req.file) db.query('UPDATE Room SET picture=? WHERE room_type_id=?', [req.file.filename, id]);
 
+        // อัปเดตรูปในตาราง Room ตามไปด้วยถ้ามีการเปลี่ยนรูป
+        if (req.files && req.files.length > 0) {
+            const p = [
+                req.files[0] ? req.files[0].filename : null,
+                req.files[1] ? req.files[1].filename : null,
+                req.files[2] ? req.files[2].filename : null,
+                req.files[3] ? req.files[3].filename : null,
+                id
+            ];
+            db.query('UPDATE Room SET picture=?, picture2=?, picture3=?, picture4=? WHERE room_type_id=?', p);
+        }
+
+        // --- ส่วนจัดการจำนวนห้อง (คงไว้ตามเดิม ไม่แก้) ---
         if (room_count) {
             const targetCount = parseInt(room_count);
             db.query('SELECT COUNT(*) as current_count FROM Room WHERE room_type_id=?', [id], (err2, countRes) => {
@@ -438,10 +477,15 @@ app.put('/rooms/:id', upload.single('room_image'), (req, res) => {
                 if (targetCount > currentCount) {
                     const diff = targetCount - currentCount;
                     let roomValues = [];
-                    const picToUse = req.file ? req.file.filename : null; 
-                    for(let i=1; i<=diff; i++) roomValues.push([`R${id}-${Date.now().toString().slice(-4)}-${i}`, 2, 'available', id, picToUse]);
-                    db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture) VALUES ?', [roomValues], () => {
-                        return res.json({ message: 'Room updated successfully (Added new rooms)' });
+                    // ใช้รูปปัจจุบัน (ถ้าอัปใหม่ใช้รูปใหม่ ถ้าไม่อัปให้ใช้ค่าเดิม)
+                    db.query('SELECT picture, picture2, picture3, picture4 FROM RoomType WHERE room_type_id=?', [id], (err3, rt) => {
+                        const row = rt[0];
+                        for(let i=1; i<=diff; i++) {
+                            roomValues.push([`R${id}-${Date.now().toString().slice(-4)}-${i}`, 2, 'available', id, row.picture, row.picture2, row.picture3, row.picture4]);
+                        }
+                        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture, picture2, picture3, picture4) VALUES ?', [roomValues], () => {
+                            return res.json({ message: 'Room updated successfully (Added new rooms)' });
+                        });
                     });
                 } else if (targetCount < currentCount) {
                     const diff = currentCount - targetCount;
