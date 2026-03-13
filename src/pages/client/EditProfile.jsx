@@ -19,7 +19,7 @@ const EditProfile = ({ user, onUpdateUser }) => {
 
   const [formData, setFormData] = useState({
     name: '',
-    gender: '',
+    sex: '', // แก้จาก gender เป็น sex
     birthdate: '',
     phone: '', 
     email: '',
@@ -46,8 +46,8 @@ const EditProfile = ({ user, onUpdateUser }) => {
       // ✅ แก้ไขส่วน setFormData ตรงนี้ให้ดึง gender และ birthdate มาด้วย
       setFormData({
         name: user.name || '',
-        gender: user.gender || user.sex || '',  // เช็กทั้งคำว่า gender และ sex เผื่อ backend ส่งมาชื่อไหน
-        birthdate: formatDate(user.birthdate) || '', // ฟอร์แมตวันเกิดให้ลงช่อง input type="date" ได้พอดี
+        sex: user.sex || '', // แก้จาก gender เป็น sex
+        birthdate: formatDate(user.birthdate),
         phone: formatPhone(user.phone),
         email: user.email || '',
       });

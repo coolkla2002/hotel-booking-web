@@ -250,7 +250,7 @@ app.post('/admin-login', (req, res) => {
 // ✅ [แก้ไข] API ดึงข้อมูลรายชื่อผู้ใช้งานทั้งหมด (Admin Management)
 // ==========================================
 app.get('/users', (req, res) => {
-    // ดึงข้อมูลตามโครงสร้างตาราง Customer ล่าสุด
+    // 1. ดึงข้อมูลเฉพาะคอลัมน์ที่มีจริงในฐานข้อมูลล่าสุด (ตัด gender ออก)
     const sql = `
         SELECT 
             u.user_id, 
@@ -260,7 +260,6 @@ app.get('/users', (req, res) => {
             c.email AS customer_email, 
             c.phone, 
             c.sex, 
-            c.gender, 
             c.birthdate
         FROM UserAccount u
         LEFT JOIN Customer c ON u.user_id = c.user_id
@@ -274,16 +273,18 @@ app.get('/users', (req, res) => {
             return res.status(500).json([]); 
         }
 
-        // จัด Format และจัดการค่าว่างให้เรียบร้อยก่อนส่งไปหน้าบ้าน
+        // 2. จัด Format ข้อมูลให้เรียบร้อยก่อนส่งไปหน้าบ้าน
         const formattedData = results.map(user => {
-            let userGender = user.gender || user.sex; // รองรับทั้งสองคอลัมน์
-            
             return {
                 user_id: user.user_id,
+                // ถ้าไม่มีชื่อให้ขึ้น 'ยังไม่ได้ระบุชื่อ'
                 fullname: (user.name && user.name.trim() !== "") ? user.name : 'ยังไม่ได้ระบุชื่อ',
+                // ใช้อีเมลจาก Customer ถ้าไม่มีให้ใช้อีเมลจาก UserAccount
                 email: user.customer_email || user.login_email,
                 phone: (user.phone && user.phone.trim() !== "") ? user.phone : '-',
-                gender: (userGender && userGender.trim() !== "") ? userGender : '-',
+                // ใช้คอลัมน์ sex ตามที่เราตกลงกัน
+                sex: (user.sex && user.sex.trim() !== "") ? user.sex : '-',
+                // จัดรูปแบบวันที่เป็นแบบไทย
                 birthdate: user.birthdate ? new Date(user.birthdate).toLocaleDateString('th-TH') : '-',
                 role: user.role
             };
@@ -520,7 +521,7 @@ app.delete('/rooms/:id', (req, res) => {
 // ==========================================
 app.post('/register', async (req, res) => {
     // 1. รับค่าทั้งหมด รวมถึง gender และ birthdate
-    const { fullname, phone, email, password, gender, birthdate } = req.body; 
+    const { fullname, phone, email, password, sex, birthdate } = req.body; 
 
     if (!fullname || !phone || !email || !password) {
         return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -541,7 +542,7 @@ app.post('/register', async (req, res) => {
             const userId = result.insertId;
             const sqlInsertCustomer = "INSERT INTO Customer (user_id, name, phone, sex, birthdate) VALUES (?, ?, ?, ?, ?)";
             
-            db.query(sqlInsertCustomer, [userId, fullname, phone, gender || null, birthdate || null], async (err, result) => {
+            db.query(sqlInsertCustomer, [userId, fullname, phone, sex, birthdate], (err) => {
                 if (err) {
                     db.query("DELETE FROM UserAccount WHERE user_id = ?", [userId]); // Rollback
                     return res.status(500).json({ success: false, message: 'Error creating profile' });
@@ -965,22 +966,23 @@ app.put('/updateBookingStatus', (req, res) => {
 // ==========================================
 // ✅ [เพิ่มใหม่] API ขอลืมรหัสผ่าน (ส่ง PIN เข้าอีเมล)
 // ==========================================
-app.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', (req, res) => {
     const { email } = req.body;
 
-    db.query("SELECT * FROM UserAccount WHERE username = ?", [email], async (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error' });
-        if (result.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
+    // 1. เช็คว่ามีอีเมลนี้ในระบบไหม
+    db.query("SELECT * FROM UserAccount WHERE username = ?", [email], (err, result) => {
+        if (err) {
+            console.error("Database error:", err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        
+        // 2. ถ้าไม่เจออีเมล ให้เตะกลับ
+        if (result.length === 0) {
+            return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
+        }
 
-        // สุ่มเลขไปงั้นๆ (หน้าบ้านก็ไม่ต้องใช้)
-        const resetPin = Math.floor(100000 + Math.random() * 900000).toString();
-
-        db.query("UPDATE UserAccount SET reset_pin = ? WHERE username = ?", [resetPin, email], async (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'Update error' });
-
-            // ❌ เอา sendEmail ออก แล้วสั่งให้ผ่านทันที
-            res.json({ success: true, message: 'ส่งรหัส PIN ไปยังอีเมลแล้ว (ระบบจำลอง)' });
-        });
+        // 3. ✅ ถ้าเจออีเมล สั่งให้ผ่านทันที! (ไม่ต้องอัปเดต Database ไม่ต้องส่งอีเมล)
+        res.json({ success: true, message: 'ส่งรหัส PIN ไปยังอีเมลแล้ว (ระบบจำลอง)' });
     });
 });
 

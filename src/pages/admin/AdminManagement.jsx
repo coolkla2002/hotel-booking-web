@@ -199,7 +199,7 @@ const AdminManagement = () => {
                                     <thead className="bg-purple-50 text-purple-900 border-b">
                                         <tr>
                                             <th className="p-4 font-bold">ลำดับ</th>
-                                            <th className="p-4 font-bold">ชื่อ-สกุล</th>
+                                            <th className="p-4 font-bold">ชื่อ</th>
                                             <th className="p-4 font-bold">อีเมล</th>
                                             <th className="p-4 font-bold">เพศ</th>
                                             <th className="p-4 font-bold">วันเกิด</th>

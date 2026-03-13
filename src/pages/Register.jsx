@@ -10,7 +10,7 @@ const Register = () => {
   // State สำหรับฟอร์มสมัครสมาชิก
   const [formData, setFormData] = useState({
     fullname: '',
-    gender: '',
+    sex: '', // แก้จาก gender เป็น sex
     birthdate: '',
     phone: '', 
     email: '',
