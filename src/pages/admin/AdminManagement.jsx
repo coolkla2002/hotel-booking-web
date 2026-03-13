@@ -201,7 +201,7 @@ const AdminManagement = () => {
                                             <th className="p-4 font-bold">ลำดับ</th>
                                             <th className="p-4 font-bold">ชื่อ</th>
                                             <th className="p-4 font-bold">อีเมล</th>
-                                            <th className="p-4 font-bold"></th>
+                                            <th className="p-4 font-bold">เพศ</th>
                                             <th className="p-4 font-bold">วันเกิด</th>
                                             <th className="p-4 font-bold">เบอร์โทร</th>
                                             <th className="p-4 font-bold text-center">บทบาท (Role)</th>
