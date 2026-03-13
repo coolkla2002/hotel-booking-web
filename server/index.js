@@ -547,24 +547,31 @@ app.post('/register', async (req, res) => {
                     return res.status(500).json({ success: false, message: 'Error creating profile' });
                 }
 
-                // 4. ส่งอีเมลแจ้งรหัส OTP
+                // ==========================================
+                // 🛠️ ส่วนที่แก้ไข: จำลองการส่งอีเมลผ่าน Console
+                // ==========================================
+                
+                // ปริ้นรหัส OTP ให้เราเห็นใน Console ของเซิร์ฟเวอร์ (ใช้ดูตอนพรีเซนต์อาจารย์ได้เลย)
+                console.log(`\n================================`);
+                console.log(`✉️ [ระบบจำลองอีเมล]`);
+                console.log(`ส่งไปยัง: ${email}`);
+                console.log(`รหัส OTP คือ: ${otpCode}`);
+                console.log(`================================\n`);
+
+                // บังคับให้เซิร์ฟเวอร์ตอบกลับว่า "สำเร็จ" ทันที (ไม่ต้องรอ Nodemailer ให้ Timeout)
+                return res.json({ 
+                    success: true, 
+                    message: 'สมัครสมาชิกสำเร็จ! (ใช้ระบบจำลองส่ง OTP)', 
+                    email: email,
+                    mockOtp: otpCode // แอบแนบรหัสไปเผื่อหน้าบ้านอยากดึงไปโชว์
+                });
+
+                /* ❌ โค้ดส่งอีเมลเดิม (คอมเมนต์ปิดไว้ก่อน)
                 const subject = "รหัสยืนยันการสมัครสมาชิก RCBAT Hotel";
-                const htmlContent = `
-                    <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9;">
-                        <h2>ยินดีต้อนรับสู่ RCBAT Hotel</h2>
-                        <p>ขอบคุณที่สมัครสมาชิกกับเรา โปรดใช้รหัส OTP ด้านล่างเพื่อยืนยันอีเมลของคุณ</p>
-                        <h1 style="color: #4CAF50; font-size: 40px; letter-spacing: 5px; margin: 20px 0;">${otpCode}</h1>
-                        <p>รหัสนี้ใช้ได้เพียงครั้งเดียว หากคุณไม่ได้ทำรายการนี้ โปรดละเว้นอีเมลฉบับนี้</p>
-                    </div>
-                `;
-
+                const htmlContent = `...`;
                 const emailSent = await sendEmail(email, subject, htmlContent);
-
-                if (emailSent) {
-                    res.json({ success: true, message: 'สมัครสมาชิกสำเร็จ กรุณาเช็กอีเมลเพื่อยืนยัน OTP', email: email });
-                } else {
-                    res.status(500).json({ success: false, message: 'บันทึกข้อมูลแล้ว แต่ไม่สามารถส่งอีเมลได้ กรุณาติดต่อแอดมิน', email: email });
-                }
+                if (emailSent) { ... } else { ... }
+                */
             });
         });
     });
