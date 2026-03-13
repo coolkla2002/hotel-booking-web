@@ -715,46 +715,6 @@ app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov
     }
 });
 
-app.post('/bookings', bookingUpload, (req, res) => {
-    try {
-        if (!req.files || !req.files['slip']) return res.status(400).json({ success: false, message: 'กรุณาแนบสลิปการโอนเงิน' });
-
-        const { user_id, room_name, price, check_in_date, check_out_date, payment_method, room_count, user_type } = req.body;
-        const payment_slip = req.files['slip'][0].filename; 
-        const gov_card_file = req.files['gov_card'] ? req.files['gov_card'][0].filename : null;
-
-        let finalPrice = parseFloat(price || 0);
-        if (user_type === 'official') finalPrice = Math.max(0, finalPrice - 100);
-
-        db.query('SELECT cus_id FROM Customer WHERE user_id = ?', [user_id], (err, cusRes) => {
-            if (err) return res.status(500).json({ success: false, message: 'DB Error 1' });
-            if (!cusRes || cusRes.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลลูกค้า' });
-            
-            const cus_id = cusRes[0].cus_id;
-            db.query('SELECT r.room_id FROM Room r JOIN RoomType rt ON r.room_type_id = rt.room_type_id WHERE rt.typename = ? LIMIT 1', [room_name], (err, roomRes) => {
-                if (err) return res.status(500).json({ success: false, message: 'DB Error 2' });
-                if (!roomRes || roomRes.length === 0) return res.status(400).json({ success: false, message: 'ไม่พบประเภทห้อง' });
-                
-                const room_id = roomRes[0].room_id;
-                const sqlBooking = `INSERT INTO Booking (cus_id, room_id, room_count, total_amount, check_in_date, check_out_date, booking_status, user_type, id_card_image, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`;
-                
-                db.query(sqlBooking, [cus_id, room_id, parseInt(room_count) || 1, finalPrice, check_in_date, check_out_date, user_type || 'general', gov_card_file], (err, bookRes) => {
-                    if (err) return res.status(500).json({ success: false, message: err.message });
-                    const booking_id = bookRes.insertId;
-
-                    const sqlPayment = `INSERT INTO Payment (booking_id, payment_slip, payment_date, payment_status, payment_method, amount) VALUES (?, ?, NOW(), 'pending', ?, ?)`;
-                    db.query(sqlPayment, [booking_id, payment_slip, payment_method || 'transfer', finalPrice], (err) => {
-                        if (err) return res.status(500).json({ success: false, message: err.message });
-                        res.json({ success: true, message: 'บันทึกการจองสำเร็จ!', booking_id: booking_id });
-                    });
-                });
-            });
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'ระบบเกิดข้อผิดพลาดร้ายแรง' });
-    }
-});
-
 app.get('/my-bookings/:userId', (req, res) => {
     const sql = `
         SELECT b.booking_id AS id, rt.typename AS room_name, b.room_count, b.check_in_date, b.check_out_date, b.total_amount AS price, b.booking_status AS status, p.payment_slip AS slip_image, b.id_card_image, b.user_type, c.name AS customer_name, u.username AS email 
