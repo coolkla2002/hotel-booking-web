@@ -1067,6 +1067,10 @@ app.post('/bookings', upload.fields([
     }
 });
 
+app.get('/check-route', (req, res) => {
+    res.json({ message: "Server is working!", timestamp: new Date() });
+});
+
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, '0.0.0.0', () => {
