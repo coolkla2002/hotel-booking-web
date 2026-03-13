@@ -162,17 +162,11 @@ app.post('/login', (req, res) => {
         return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบ' });
     }
 
-    // ✅ ดึง is_verified ออกมาเช็กด้วย
+    // ✅ ดึงข้อมูลมาครบถ้วน (เพิ่ม sex, birthdate ตามที่คุณเขียนมา)
+    // 🛠️ แก้ไข: เพิ่ม AND u.password = ? เพื่อให้ระบบตรวจสอบรหัสผ่านด้วย
     const sql = `
-        SELECT 
-            u.user_id AS id, 
-            u.username AS email, 
-            u.role, 
-            u.is_verified, 
-            c.name, 
-            c.phone,
-            c.sex,
-            c.birthdate
+        SELECT u.user_id, u.username, u.password, u.role, u.is_verified, 
+               c.name, c.email, c.phone, c.sex, c.birthdate 
         FROM UserAccount u
         LEFT JOIN Customer c ON u.user_id = c.user_id
         WHERE u.username = ? AND u.password = ?
@@ -190,10 +184,11 @@ app.post('/login', (req, res) => {
                     success: false, 
                     message: 'กรุณายืนยันอีเมลด้วยรหัส OTP ก่อนเข้าสู่ระบบ',
                     require_otp: true, // ตัวแปรนี้ให้ Frontend รู้ว่าต้องเด้งหน้ากรอก OTP
-                    email: user.email 
+                    email: user.username // ใช้ user.username เพื่อให้ชัวร์ว่าเป็นอีเมลที่ใช้ล็อกอิน
                 });
             }
 
+            // ส่งข้อมูล user กลับไป (ซึ่งตอนนี้มี sex และ birthdate รวมอยู่ด้วยแล้ว)
             res.json({ success: true, user: user, role: user.role });
         } else {
             res.status(401).json({ success: false, message: 'Login Failed: อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
@@ -540,10 +535,14 @@ app.post('/register', async (req, res) => {
             if (err) return res.status(500).json({ success: false, message: 'Error creating account' });
 
             const userId = result.insertId;
-            const sqlInsertCustomer = "INSERT INTO Customer (user_id, name, phone, sex, birthdate) VALUES (?, ?, ?, ?, ?)";
             
-            db.query(sqlInsertCustomer, [userId, fullname, phone, sex, birthdate], (err) => {
+            // ✅ จุดที่แก้ไข: เพิ่มคอลัมน์ email เข้าไปในการบันทึกลงตาราง Customer
+            const sqlInsertCustomer = "INSERT INTO Customer (user_id, name, email, phone, sex, birthdate) VALUES (?, ?, ?, ?, ?, ?)";
+            
+            // ✅ แนบตัวแปร email เข้าไปใน array ให้ตรงกับเครื่องหมาย ? ด้วย
+            db.query(sqlInsertCustomer, [userId, fullname, email, phone, sex, birthdate], (err) => {
                 if (err) {
+                    console.error("Insert Customer Error:", err); // เพิ่ม log เผื่อ error
                     db.query("DELETE FROM UserAccount WHERE user_id = ?", [userId]); // Rollback
                     return res.status(500).json({ success: false, message: 'Error creating profile' });
                 }
