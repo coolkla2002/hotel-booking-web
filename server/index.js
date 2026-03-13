@@ -8,7 +8,7 @@ const fs = require('fs');
 const multer = require('multer');
 
 // ✅ Import ไฟล์สำหรับส่งอีเมล
-const sendEmail = require('./utils/sendEmail'); 
+const sendEmail = require('./utils/sendEmail');
 
 const app = express();
 
@@ -17,12 +17,12 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
     origin: [
-        "http://localhost:5173",             
-        "http://localhost:3001",             
+        "http://localhost:5173",
+        "http://localhost:3001",
         "http://127.0.0.1:3001",
-        "http://localhost:3000",             
+        "http://localhost:3000",
         "https://hotel-booking-web-eight.vercel.app",
-        "https://hotel-booking-web-kfks.onrender.com" 
+        "https://hotel-booking-web-kfks.onrender.com"
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
@@ -30,8 +30,8 @@ app.use(cors({
 
 // Config Uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-const uploadDir = path.join(__dirname, 'uploads'); 
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir); 
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
@@ -51,10 +51,10 @@ const db = mysql.createPool({
     port: 4000,
     user: '3139LmZoDYQEp3K.root',
     password: 'vXF32FzROBw8ZqKw',
-    database: 'hotel_db_new', 
+    database: 'hotel_db_new',
     ssl: {
         minVersion: 'TLSv1.2',
-        rejectUnauthorized: false 
+        rejectUnauthorized: false
     }
 });
 
@@ -155,8 +155,8 @@ app.get('/fix-reschedule', (req, res) => {
 
 // --- ระบบ Login ---
 app.post('/login', (req, res) => {
-    const email = req.body.email || req.body.username; 
-    const password = req.body.password; 
+    const email = req.body.email || req.body.username;
+    const password = req.body.password;
 
     if (!email || !password) {
         return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบ' });
@@ -171,17 +171,17 @@ app.post('/login', (req, res) => {
         LEFT JOIN Customer c ON u.user_id = c.user_id
         WHERE u.username = ? AND u.password = ?
     `;
-    
+
     db.query(sql, [email, password], (err, results) => {
         if (err) return res.status(500).json(err);
-        
+
         if (results.length > 0) {
             const user = results[0];
 
             // ✅ เช็กว่ายืนยันอีเมลหรือยัง (สำหรับลูกค้า)
             if (user.role === 'customer' && user.is_verified === 0) {
-                return res.status(401).json({ 
-                    success: false, 
+                return res.status(401).json({
+                    success: false,
                     message: 'กรุณายืนยันอีเมลด้วยรหัส OTP ก่อนเข้าสู่ระบบ',
                     require_otp: true, // ตัวแปรนี้ให้ Frontend รู้ว่าต้องเด้งหน้ากรอก OTP
                     email: user.username // ใช้ user.username เพื่อให้ชัวร์ว่าเป็นอีเมลที่ใช้ล็อกอิน
@@ -211,18 +211,18 @@ app.post('/admin-login', (req, res) => {
         FROM UserAccount 
         WHERE username = ? AND password = ? AND role != 'customer'
     `;
-    
+
     db.query(sql, [email, password], (err, results) => {
         if (err) {
             console.error("❌ SQL Error (/admin-login):", err.message);
             return res.status(500).json({ success: false, message: 'Database Error: ' + err.message });
         }
-        
+
         if (results.length > 0) {
             const user = results[0];
             // 3. กำหนดชื่อจำลองให้ไปเลย เพื่อให้หน้าบ้านเอาไปแสดงผลได้
             user.name = user.role === 'admin' ? 'Super Admin' : 'Manager';
-            
+
             res.json({ success: true, user: user });
         } else {
             res.status(401).json({ success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือไม่มีสิทธิ์เข้าถึงระบบ' });
@@ -257,7 +257,7 @@ app.get('/users', (req, res) => {
     db.query(sql, (err, results) => {
         if (err) {
             console.error("❌ SQL Error (/users):", err.message);
-            return res.status(500).json([]); 
+            return res.status(500).json([]);
         }
 
         // 2. จัด Format ข้อมูลให้เรียบร้อยก่อนส่งไปหน้าบ้าน
@@ -286,12 +286,12 @@ app.put('/users/:id', (req, res) => {
     const { name, fullname, email, phone, sex, birthdate, password } = req.body;
 
     const finalName = name || fullname || '';
-    
+
     let finalBirthdate = null;
     if (birthdate && birthdate !== '-' && birthdate.trim() !== '') {
         const d = new Date(birthdate);
-        if (!isNaN(d.getTime())) { 
-            finalBirthdate = d.toISOString().split('T')[0]; 
+        if (!isNaN(d.getTime())) {
+            finalBirthdate = d.toISOString().split('T')[0];
         }
     }
 
@@ -299,7 +299,7 @@ app.put('/users/:id', (req, res) => {
 
     // 1. เช็คก่อนว่ามีข้อมูลของ user_id นี้ในตาราง Customer หรือยัง?
     const checkSql = `SELECT * FROM Customer WHERE user_id = ?`;
-    
+
     db.query(checkSql, [userId], (err, results) => {
         if (err) {
             console.error("❌ SQL Error (Check Customer):", err.message);
@@ -330,7 +330,7 @@ app.put('/users/:id', (req, res) => {
         db.query(sqlCustomer, paramsCustomer, (err2, result2) => {
             if (err2) {
                 console.error("❌ SQL Error (Save Customer):", err2.message);
-                return res.status(500).json({ success: false, message: "Error saving customer: " + err2.message });
+                return res.status(500).json({ success: false, message: "บันทึกข้อมูลลูกค้าไม่สำเร็จ" });
             }
 
             // 3. ถ้ามีการส่งรหัสผ่านใหม่มา ให้อัปเดตตาราง UserAccount ด้วย
@@ -411,7 +411,7 @@ app.get('/rooms', (req, res) => {
 
 app.post('/rooms', upload.array('room_image', 4), (req, res) => {
     const { room_name, price, room_count } = req.body;
-    
+
     // จัดการชื่อไฟล์รูปภาพทั้ง 4 (ถ้ามีไม่ครบจะเป็น null)
     const pics = [
         req.files[0] ? req.files[0].filename : '',
@@ -420,33 +420,33 @@ app.post('/rooms', upload.array('room_image', 4), (req, res) => {
         req.files[3] ? req.files[3].filename : null
     ];
 
-    const count = room_count ? parseInt(room_count) : 15; 
+    const count = room_count ? parseInt(room_count) : 15;
 
     // เพิ่มรูป 1-4 ลงใน RoomType
-    db.query('INSERT INTO RoomType (typename, price, picture, picture2, picture3, picture4) VALUES (?, ?, ?, ?, ?, ?)', 
-    [room_name, price, pics[0], pics[1], pics[2], pics[3]], (err, result) => {
-        if (err) return res.status(500).json(err);
-        const newRoomTypeId = result.insertId;
-        let roomValues = [];
-        
-        // เพิ่มรูป 1-4 ลงในทุกลูกของ Room
-        for(let i=1; i<=count; i++) {
-            roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId]);
-        }
+    db.query('INSERT INTO RoomType (typename, price, picture, picture2, picture3, picture4) VALUES (?, ?, ?, ?, ?, ?)',
+        [room_name, price, pics[0], pics[1], pics[2], pics[3]], (err, result) => {
+            if (err) return res.status(500).json(err);
+            const newRoomTypeId = result.insertId;
+            let roomValues = [];
 
-        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], (err2) => {
-            if (err2) return res.status(500).json(err2);
-            res.json({ message: 'Room added successfully with 4 images' });
+            // เพิ่มรูป 1-4 ลงในทุกลูกของ Room
+            for (let i = 1; i <= count; i++) {
+                roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId]);
+            }
+
+            db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], (err2) => {
+                if (err2) return res.status(500).json(err2);
+                res.json({ message: 'Room added successfully with 4 images' });
+            });
         });
-    });
 });
 
 app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
     const { id } = req.params;
-    const { room_name, price, room_count, amenities } = req.body; 
-    
+    const { room_name, price, room_count, amenities } = req.body;
+
     let sql = 'UPDATE RoomType SET typename=?, price=?, amenities=?';
-    let params = [room_name, price, amenities]; 
+    let params = [room_name, price, amenities];
 
     // ถ้ามีการอัปโหลดรูปใหม่ (จะอัปเกรดเป็นชุดใหม่ทั้งหมด)
     if (req.files && req.files.length > 0) {
@@ -458,8 +458,8 @@ app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
             req.files[3] ? req.files[3].filename : null
         );
     }
-    
-    sql += ' WHERE room_type_id=?'; 
+
+    sql += ' WHERE room_type_id=?';
     params.push(id);
 
     db.query(sql, params, (err) => {
@@ -470,17 +470,17 @@ app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
             db.query('SELECT COUNT(*) as current_count FROM Room WHERE room_type_id=?', [id], (err2, countRes) => {
                 if (err2) return res.json({ message: 'Room updated but failed to check count' });
                 const currentCount = countRes[0].current_count || 0;
-                
+
                 if (targetCount > currentCount) {
                     const diff = targetCount - currentCount;
                     let roomValues = [];
                     // ใช้รูปปัจจุบัน (ถ้าอัปใหม่ใช้รูปใหม่ ถ้าไม่อัปให้ใช้ค่าเดิม)
                     db.query('SELECT picture, picture2, picture3, picture4 FROM RoomType WHERE room_type_id=?', [id], (err3, rt) => {
                         const row = rt[0];
-                        for(let i=1; i<=diff; i++) {
+                        for (let i = 1; i <= diff; i++) {
                             roomValues.push([`R${id}-${Date.now().toString().slice(-4)}-${i}`, 2, 'available', id]);
-}
-db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], () => {
+                        }
+                        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], () => {
                             return res.json({ message: 'Room updated successfully (Added new rooms)' });
                         });
                     });
@@ -516,7 +516,7 @@ app.delete('/rooms/:id', (req, res) => {
 // ==========================================
 app.post('/register', async (req, res) => {
     // 1. รับค่าทั้งหมด รวมถึง gender และ birthdate
-    const { fullname, phone, email, password, sex, birthdate } = req.body; 
+    const { fullname, phone, email, password, sex, birthdate } = req.body;
 
     if (!fullname || !phone || !email || !password) {
         return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
@@ -530,50 +530,50 @@ app.post('/register', async (req, res) => {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
 
         // 3. สร้างบัญชีผู้ใช้ พร้อมตั้งค่า is_verified = 0 และแนบรหัส OTP
-        db.query("INSERT INTO UserAccount (username, password, role, is_verified, otp_code) VALUES (?, ?, ?, 0, ?)", 
-        [email, password, 'customer', otpCode], (err, result) => {
-            if (err) return res.status(500).json({ success: false, message: 'Error creating account' });
+        db.query("INSERT INTO UserAccount (username, password, role, is_verified, otp_code) VALUES (?, ?, ?, 0, ?)",
+            [email, password, 'customer', otpCode], (err, result) => {
+                if (err) return res.status(500).json({ success: false, message: 'Error creating account' });
 
-            const userId = result.insertId;
-            
-            // ✅ จุดที่แก้ไข: เพิ่มคอลัมน์ email เข้าไปในการบันทึกลงตาราง Customer
-            const sqlInsertCustomer = "INSERT INTO Customer (user_id, name, email, phone, sex, birthdate) VALUES (?, ?, ?, ?, ?, ?)";
-            
-            // ✅ แนบตัวแปร email เข้าไปใน array ให้ตรงกับเครื่องหมาย ? ด้วย
-            db.query(sqlInsertCustomer, [userId, fullname, email, phone, sex, birthdate], (err) => {
-                if (err) {
-                    console.error("Insert Customer Error:", err); // เพิ่ม log เผื่อ error
-                    db.query("DELETE FROM UserAccount WHERE user_id = ?", [userId]); // Rollback
-                    return res.status(500).json({ success: false, message: 'Error creating profile' });
-                }
+                const userId = result.insertId;
 
-                // ==========================================
-                // 🛠️ ส่วนที่แก้ไข: จำลองการส่งอีเมลผ่าน Console
-                // ==========================================
-                
-                // ปริ้นรหัส OTP ให้เราเห็นใน Console ของเซิร์ฟเวอร์ (ใช้ดูตอนพรีเซนต์อาจารย์ได้เลย)
-                console.log(`\n================================`);
-                console.log(`✉️ [ระบบจำลองอีเมล]`);
-                console.log(`ส่งไปยัง: ${email}`);
-                console.log(`รหัส OTP คือ: ${otpCode}`);
-                console.log(`================================\n`);
+                // ✅ จุดที่แก้ไข: เพิ่มคอลัมน์ email เข้าไปในการบันทึกลงตาราง Customer
+                const sqlInsertCustomer = "INSERT INTO Customer (user_id, name, email, phone, sex, birthdate) VALUES (?, ?, ?, ?, ?, ?)";
 
-                // บังคับให้เซิร์ฟเวอร์ตอบกลับว่า "สำเร็จ" ทันที (ไม่ต้องรอ Nodemailer ให้ Timeout)
-                return res.json({ 
-                    success: true, 
-                    message: 'สมัครสมาชิกสำเร็จ! (ใช้ระบบจำลองส่ง OTP)', 
-                    email: email,
-                    mockOtp: otpCode // แอบแนบรหัสไปเผื่อหน้าบ้านอยากดึงไปโชว์
+                // ✅ แนบตัวแปร email เข้าไปใน array ให้ตรงกับเครื่องหมาย ? ด้วย
+                db.query(sqlInsertCustomer, [userId, fullname, email, phone, sex, birthdate], (err) => {
+                    if (err) {
+                        console.error("Insert Customer Error:", err); // เพิ่ม log เผื่อ error
+                        db.query("DELETE FROM UserAccount WHERE user_id = ?", [userId]); // Rollback
+                        return res.status(500).json({ success: false, message: 'Error creating profile' });
+                    }
+
+                    // ==========================================
+                    // 🛠️ ส่วนที่แก้ไข: จำลองการส่งอีเมลผ่าน Console
+                    // ==========================================
+
+                    // ปริ้นรหัส OTP ให้เราเห็นใน Console ของเซิร์ฟเวอร์ (ใช้ดูตอนพรีเซนต์อาจารย์ได้เลย)
+                    console.log(`\n================================`);
+                    console.log(`✉️ [ระบบจำลองอีเมล]`);
+                    console.log(`ส่งไปยัง: ${email}`);
+                    console.log(`รหัส OTP คือ: ${otpCode}`);
+                    console.log(`================================\n`);
+
+                    // บังคับให้เซิร์ฟเวอร์ตอบกลับว่า "สำเร็จ" ทันที (ไม่ต้องรอ Nodemailer ให้ Timeout)
+                    return res.json({
+                        success: true,
+                        message: 'สมัครสมาชิกสำเร็จ! (ใช้ระบบจำลองส่ง OTP)',
+                        email: email,
+                        mockOtp: otpCode // แอบแนบรหัสไปเผื่อหน้าบ้านอยากดึงไปโชว์
+                    });
+
+                    /* ❌ โค้ดส่งอีเมลเดิม (คอมเมนต์ปิดไว้ก่อน)
+                    const subject = "รหัสยืนยันการสมัครสมาชิก RCBAT Hotel";
+                    const htmlContent = `...`;
+                    const emailSent = await sendEmail(email, subject, htmlContent);
+                    if (emailSent) { ... } else { ... }
+                    */
                 });
-
-                /* ❌ โค้ดส่งอีเมลเดิม (คอมเมนต์ปิดไว้ก่อน)
-                const subject = "รหัสยืนยันการสมัครสมาชิก RCBAT Hotel";
-                const htmlContent = `...`;
-                const emailSent = await sendEmail(email, subject, htmlContent);
-                if (emailSent) { ... } else { ... }
-                */
             });
-        });
     });
 });
 
@@ -610,10 +610,10 @@ app.put('/update-user', (req, res) => {
 
     const validBirthdate = (!birthdate || birthdate === '') ? null : birthdate;
     const sqlCustomer = "UPDATE Customer SET name=?, phone=?, sex=?, birthdate=? WHERE user_id=?";
-    
+
     db.query(sqlCustomer, [name, String(phone), sex, validBirthdate, id], (err) => {
         if (err) return res.status(500).json({ success: false, message: "อัปเดต Customer พัง", error: err.message });
-        
+
         if (password && password.trim() !== "") {
             db.query("UPDATE UserAccount SET password=? WHERE user_id=?", [password, id], (err2) => {
                 if (err2) return res.status(500).json({ success: false, message: "อัปเดตรหัสผ่านพัง", error: err2.message });
@@ -711,13 +711,13 @@ app.post('/admin/approve-reschedule', (req, res) => {
     const { booking_id, action } = req.body;
     if (!booking_id || !action) return res.status(400).json({ success: false, message: 'ข้อมูลไม่ครบถ้วน' });
 
-    let sql = action === 'approve' 
+    let sql = action === 'approve'
         ? `UPDATE Booking SET booking_status='approved', check_in_date=request_check_in, check_out_date=request_check_out, reschedule_count = COALESCE(reschedule_count, 0) + 1, request_check_in=NULL, request_check_out=NULL, reschedule_reason=NULL WHERE booking_id=?`
         : `UPDATE Booking SET booking_status='approved', request_check_in=NULL, request_check_out=NULL, reschedule_reason=NULL WHERE booking_id=?`;
 
     db.query(sql, [booking_id], (err) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
-        
+
         // 📧 ส่งอีเมลแจ้งเตือนลูกค้าหลังจัดการเลื่อนวัน
         const getSql = `
             SELECT b.*, c.name AS fullname, u.username AS email 
@@ -770,7 +770,7 @@ app.post('/admin/approve-reschedule', (req, res) => {
 app.post('/cancel-bookings', upload.fields([{ name: 'refund_image', maxCount: 1 }, { name: 'refund_qr', maxCount: 1 }]), (req, res) => {
     const booking_id = req.body.booking_id || req.body.id;
     const reason = req.body.reason || req.body.cancel_reason;
-    const refund_details = req.body.refund_details || req.body.bank_account; 
+    const refund_details = req.body.refund_details || req.body.bank_account;
     let refund_image = (req.files && req.files['refund_image']) ? req.files['refund_image'][0].filename : (req.files && req.files['refund_qr']) ? req.files['refund_qr'][0].filename : null;
 
     if (!booking_id) return res.status(400).json({ success: false, message: 'Booking ID is required' });
@@ -854,8 +854,8 @@ app.delete('/bookings/:id', (req, res) => {
 app.put('/updateBookingStatus', (req, res) => {
     const { id, status } = req.body;
     db.query("UPDATE Booking SET booking_status = ? WHERE booking_id = ?", [status, id], (err) => {
-        if(err) return res.status(500).json(err);
-        
+        if (err) return res.status(500).json(err);
+
         // 📧 ส่งอีเมลแจ้งเตือนลูกค้าหลังอัปเดตสถานะ (อนุมัติ / ปฏิเสธ / ยกเลิกคืนเงิน)
         const getSql = `
             SELECT b.*, c.name AS fullname, u.username AS email 
@@ -926,7 +926,7 @@ app.post('/forgot-password', (req, res) => {
             console.error("Database error:", err);
             return res.status(500).json({ success: false, message: 'Database error' });
         }
-        
+
         // 2. ถ้าไม่เจออีเมล ให้เตะกลับ
         if (result.length === 0) {
             return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
@@ -963,10 +963,10 @@ app.post('/verify-forgot-otp', (req, res) => {
 // ==========================================
 app.post('/reset-password', (req, res) => {
     const email = req.body.email;
-    const password = req.body.password || req.body.newPassword; 
-    
+    const password = req.body.password || req.body.newPassword;
+
     if (!email || !password) return res.status(400).json({ success: false, message: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
-    
+
     // อัปเดตรหัสผ่านใหม่ และ ล้าง otp_code ทิ้งเพื่อความปลอดภัย
     db.query("UPDATE UserAccount SET password = ?, otp_code = NULL WHERE username = ?", [password, email], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -999,7 +999,7 @@ app.get('/admin/reschedule-requests', (req, res) => {
         WHERE b.booking_status = 'pending_reschedule'
         ORDER BY b.booking_id DESC
     `;
-    
+
     db.query(sql, (err, results) => {
         if (err) {
             console.error("Error fetching reschedule requests:", err);
@@ -1012,7 +1012,7 @@ app.get('/admin/reschedule-requests', (req, res) => {
 
 // --- ส่วนรับการจองห้องพัก ---
 app.post('/bookings', upload.fields([
-    { name: 'slip', maxCount: 1 }, 
+    { name: 'slip', maxCount: 1 },
     { name: 'gov_card', maxCount: 1 }
 ]), (req, res) => {
     try {
@@ -1022,7 +1022,7 @@ app.post('/bookings', upload.fields([
         }
 
         const { user_id, room_name, price, check_in_date, check_out_date, payment_method, room_count, user_type } = req.body;
-        const payment_slip = req.files['slip'][0].filename; 
+        const payment_slip = req.files['slip'][0].filename;
         const gov_card_file = req.files['gov_card'] ? req.files['gov_card'][0].filename : null;
 
         let finalPrice = parseFloat(price || 0);
@@ -1033,29 +1033,42 @@ app.post('/bookings', upload.fields([
         db.query('SELECT cus_id FROM Customer WHERE user_id = ?', [user_id], (err, cusRes) => {
             if (err) return res.status(500).json({ success: false, message: 'DB Error (Customer Search)' });
             if (!cusRes || cusRes.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลลูกค้า' });
-            
+
             const cus_id = cusRes[0].cus_id;
 
             // 3. ค้นหา room_id จากชื่อประเภทห้อง
             db.query('SELECT r.room_id FROM Room r JOIN RoomType rt ON r.room_type_id = rt.room_type_id WHERE rt.typename = ? LIMIT 1', [room_name], (err, roomRes) => {
                 if (err) return res.status(500).json({ success: false, message: 'DB Error (Room Search)' });
                 if (!roomRes || roomRes.length === 0) return res.status(400).json({ success: false, message: 'ไม่พบประเภทห้องพักนี้' });
-                
+
                 const room_id = roomRes[0].room_id;
 
                 // 4. บันทึกลงตาราง Booking
-                const sqlBooking = `INSERT INTO Booking (cus_id, room_id, room_count, total_amount, check_in_date, check_out_date, booking_status, user_type, id_card_image, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`;
-                
+                const sqlBooking = `
+    INSERT INTO Booking (
+        cus_id, 
+        room_id, 
+        room_count, 
+        total_amount,   -- ตรวจสอบว่าใน DB ชื่อนี้ไหม (บางรูปเห็นเป็น amount เฉยๆ)
+        check_in_date, 
+        check_out_date, 
+        booking_status, -- ในรูป DB ของคุณคือคอลัมน์นี้
+        user_type, 
+        id_card_image, 
+        booking_date
+    ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())
+`;
+
                 db.query(sqlBooking, [cus_id, room_id, parseInt(room_count) || 1, finalPrice, check_in_date, check_out_date, user_type || 'general', gov_card_file], (err, bookRes) => {
                     if (err) return res.status(500).json({ success: false, message: 'บันทึกการจองล้มเหลว: ' + err.message });
-                    
+
                     const booking_id = bookRes.insertId;
 
                     // 5. บันทึกลงตาราง Payment
                     const sqlPayment = `INSERT INTO Payment (booking_id, payment_slip, payment_date, payment_status, payment_method, amount) VALUES (?, ?, NOW(), 'pending', ?, ?)`;
                     db.query(sqlPayment, [booking_id, payment_slip, payment_method || 'transfer', finalPrice], (err) => {
                         if (err) return res.status(500).json({ success: false, message: 'บันทึกการชำระเงินล้มเหลว' });
-                        
+
                         res.json({ success: true, message: 'บันทึกการจองสำเร็จ!', booking_id: booking_id });
                     });
                 });
