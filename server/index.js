@@ -389,13 +389,26 @@ app.put('/users/:id/role', (req, res) => {
 // --- 2. จัดการ Rooms (Admin Only) ---
 app.get('/rooms', (req, res) => {
     const sql = `
-        SELECT rt.room_type_id AS id, rt.typename AS name, rt.price, rt.picture AS image_url, rt.amenities, COUNT(r.room_id) AS room_count 
-        FROM RoomType rt LEFT JOIN Room r ON rt.room_type_id = r.room_type_id GROUP BY rt.room_type_id
+        SELECT 
+            rt.room_type_id AS id, 
+            rt.typename AS name, 
+            rt.price, 
+            rt.picture AS image_url, 
+            rt.picture2, 
+            rt.picture3, 
+            rt.picture4, 
+            rt.amenities, 
+            COUNT(r.room_id) AS room_count 
+        FROM RoomType rt 
+        LEFT JOIN Room r ON rt.room_type_id = r.room_type_id 
+        GROUP BY rt.room_type_id, rt.typename, rt.price, rt.picture, rt.picture2, rt.picture3, rt.picture4, rt.amenities
     `;
     db.query(sql, (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: 'Database error', error: err.message });
-        const formattedResult = result.map(room => ({ ...room, amenities: room.amenities || '' }));
-        res.json(formattedResult);
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ success: false, message: 'Database error' });
+        }
+        res.json(result);
     });
 });
 
