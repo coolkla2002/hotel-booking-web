@@ -237,7 +237,7 @@ app.post('/admin-login', (req, res) => {
 // ✅ [แก้ไข] API ดึงข้อมูลรายชื่อผู้ใช้งานทั้งหมด (Admin Management)
 // ==========================================
 app.get('/users', (req, res) => {
-    // 1. ดึงข้อมูลเฉพาะคอลัมน์ที่มีจริงในฐานข้อมูลล่าสุด (ตัด gender ออก)
+    // 1. ดึงข้อมูลเฉพาะคอลัมน์ที่มีจริง (กรอง admin และ manager ออก)
     const sql = `
         SELECT 
             u.user_id, 
@@ -250,7 +250,7 @@ app.get('/users', (req, res) => {
             c.birthdate
         FROM UserAccount u
         LEFT JOIN Customer c ON u.user_id = c.user_id
-        WHERE u.role != 'admin'
+        WHERE u.role NOT IN ('admin', 'manager')
         ORDER BY u.user_id DESC
     `;
 
