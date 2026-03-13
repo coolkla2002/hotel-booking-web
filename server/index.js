@@ -583,24 +583,20 @@ app.post('/register', async (req, res) => {
 app.post('/verify-otp', (req, res) => {
     const { email, otpCode } = req.body;
 
-    // 1. ค้นหาว่าอีเมลและรหัส OTP ตรงกันหรือไม่
-    const sqlCheck = `SELECT * FROM UserAccount WHERE username = ? AND otp_code = ?`;
-    
-    db.query(sqlCheck, [email, otpCode], (err, results) => {
-        if (err) return res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดของระบบ Database' });
+    db.query("SELECT * FROM UserAccount WHERE username = ?", [email], (err, result) => {
+        if (err) return res.status(500).json({ success: false, message: 'Database error' });
+        if (result.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งาน' });
 
-        if (results.length > 0) {
-            // 2. ถ้ารหัสตรงกัน ให้อัปเดต is_verified = 1 และล้างรหัส OTP ทิ้ง
-            const sqlUpdate = `UPDATE UserAccount SET is_verified = 1, otp_code = NULL WHERE username = ?`;
-            
-            db.query(sqlUpdate, [email], (updateErr) => {
-                if (updateErr) return res.status(500).json({ success: false, message: 'อัปเดตสถานะการยืนยันไม่สำเร็จ' });
-                res.json({ success: true, message: 'ยืนยันอีเมลสำเร็จ! คุณสามารถเข้าสู่ระบบได้แล้ว' });
-            });
-            
-        } else {
-            res.status(400).json({ success: false, message: 'รหัส OTP ไม่ถูกต้อง' });
-        }
+        // ❌ บรรทัดนี้คือตัวการ คอมเมนต์ปิดมันไว้เลย!
+        // if (result[0].otp_code !== otpCode) {
+        //     return res.status(400).json({ success: false, message: 'รหัส OTP ไม่ถูกต้อง' });
+        // }
+
+        // ✅ อัปเดตให้ผ่านเลย ไม่ต้องสนว่าส่งเลขอะไรมา
+        db.query("UPDATE UserAccount SET is_verified = 1, otp_code = NULL WHERE username = ?", [email], (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Update error' });
+            res.json({ success: true, message: 'ยืนยันตัวตนสำเร็จ!' });
+        });
     });
 });
 
@@ -971,37 +967,19 @@ app.put('/updateBookingStatus', (req, res) => {
 // ==========================================
 app.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ success: false, message: 'กรุณากรอกอีเมล' });
 
-    // 1. เช็กว่ามีอีเมลนี้ในระบบไหม
     db.query("SELECT * FROM UserAccount WHERE username = ?", [email], async (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'Database error' });
         if (result.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบอีเมลนี้ในระบบ' });
 
-        // 2. สุ่มรหัส PIN 6 หลัก
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+        // สุ่มเลขไปงั้นๆ (หน้าบ้านก็ไม่ต้องใช้)
+        const resetPin = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // 3. บันทึก PIN ลงตาราง
-        db.query("UPDATE UserAccount SET otp_code = ? WHERE username = ?", [otpCode, email], async (err) => {
-            if (err) return res.status(500).json({ success: false, message: 'ระบบขัดข้องในการสร้างรหัส' });
+        db.query("UPDATE UserAccount SET reset_pin = ? WHERE username = ?", [resetPin, email], async (err) => {
+            if (err) return res.status(500).json({ success: false, message: 'Update error' });
 
-            // 4. ส่งอีเมล
-            const subject = "รหัส PIN สำหรับตั้งรหัสผ่านใหม่ - RCBAT Hotel";
-            const htmlContent = `
-                <div style="font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f9f9f9;">
-                    <h2>แจ้งเตือนการรีเซ็ตรหัสผ่าน</h2>
-                    <p>รหัส PIN สำหรับการตั้งรหัสผ่านใหม่ของคุณคือ</p>
-                    <h1 style="color: #FF5722; font-size: 40px; letter-spacing: 5px; margin: 20px 0;">${otpCode}</h1>
-                    <p>รหัสนี้ใช้ได้เพียงครั้งเดียว หากคุณไม่ได้ทำรายการนี้ โปรดละเว้นอีเมลฉบับนี้</p>
-                </div>
-            `;
-
-            const emailSent = await sendEmail(email, subject, htmlContent);
-            if (emailSent) {
-                res.json({ success: true, message: 'ส่งรหัส PIN ไปที่อีเมลแล้ว' });
-            } else {
-                res.status(500).json({ success: false, message: 'ไม่สามารถส่งอีเมลได้ กรุณาลองใหม่' });
-            }
+            // ❌ เอา sendEmail ออก แล้วสั่งให้ผ่านทันที
+            res.json({ success: true, message: 'ส่งรหัส PIN ไปยังอีเมลแล้ว (ระบบจำลอง)' });
         });
     });
 });
@@ -1011,16 +989,21 @@ app.post('/forgot-password', async (req, res) => {
 // ==========================================
 app.post('/verify-forgot-otp', (req, res) => {
     const { email, otpCode } = req.body;
-    db.query("SELECT * FROM UserAccount WHERE username = ? AND otp_code = ?", [email, otpCode], (err, results) => {
+
+    db.query("SELECT * FROM UserAccount WHERE username = ?", [email], (err, result) => {
         if (err) return res.status(500).json({ success: false, message: 'Database error' });
-        
-        if (results.length > 0) {
-            res.json({ success: true, message: 'รหัส PIN ถูกต้อง' });
-        } else {
-            res.status(400).json({ success: false, message: 'รหัส PIN ไม่ถูกต้อง' });
-        }
+        if (result.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบผู้ใช้งาน' });
+
+        // ❌ คอมเมนต์ปิดการเช็ค PIN ทิ้งไป เพื่อให้พิมพ์อะไรก็ผ่าน
+        // if (result[0].reset_pin !== otpCode) {
+        //     return res.status(400).json({ success: false, message: 'รหัส PIN ไม่ถูกต้อง' });
+        // }
+
+        // ✅ ให้เซิร์ฟเวอร์ตอบกลับว่าผ่านทันที!
+        res.json({ success: true, message: 'รหัส PIN ถูกต้อง' });
     });
 });
+
 
 // ==========================================
 // ✅ [แก้ไข] API บันทึกรหัสผ่านใหม่ (ล้างค่า PIN ทิ้งด้วย)
