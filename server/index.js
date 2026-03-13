@@ -356,17 +356,25 @@ app.put('/users/:id', (req, res) => {
 });
 
 app.delete('/users/:id', (req, res) => {
-    const { id } = req.params;
-    if (id == 1) return res.status(403).json({ message: "Cannot delete Super Admin" });
-    
-    // 1. ลบจาก Customer ก่อน
-    db.query('DELETE FROM Customer WHERE user_id = ?', [id], (err) => {
-        if (err) return res.status(500).json(err);
-        
-        // 2. ลบจาก UserAccount เลย (ไม่ต้องผ่าน Admin แล้ว)
-        db.query('DELETE FROM UserAccount WHERE user_id = ?', [id], (err2) => {
-            if (err2) return res.status(500).json(err2);
-            res.json({ message: 'User deleted' });
+    const id = req.params.id;
+
+    // ขั้นตอนที่ 1: ลบข้อมูลในตาราง Customer ก่อน (เพราะมี user_id เป็น FK)
+    const sqlDeleteCustomer = "DELETE FROM Customer WHERE user_id = ?";
+
+    db.query(sqlDeleteCustomer, [id], (err, result) => {
+        if (err) {
+            console.error("❌ Error deleting customer:", err);
+            return res.status(500).send("ไม่สามารถลบข้อมูลโปรไฟล์ลูกค้าได้");
+        }
+
+        // ขั้นตอนที่ 2: เมื่อลบข้อมูลลูกสำเร็จแล้ว จึงลบข้อมูลใน UserAccount (ตารางแม่)
+        const sqlDeleteUser = "DELETE FROM UserAccount WHERE user_id = ?";
+        db.query(sqlDeleteUser, [id], (err, result) => {
+            if (err) {
+                console.error("❌ Error deleting user account:", err);
+                return res.status(500).send("ไม่สามารถลบบัญชีผู้ใช้ได้ (อาจมีประวัติการจองค้างอยู่)");
+            }
+            res.send("ลบบัญชีผู้ใช้สำเร็จ");
         });
     });
 });
