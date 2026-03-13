@@ -20,7 +20,8 @@ app.use(cors({
         "http://localhost:5173",             
         "http://localhost:3001",             
         "http://127.0.0.1:3001",             
-        "https://hotel-booking-web-eight.vercel.app" 
+        "https://hotel-booking-web-eight.vercel.app",
+        "https://hotel-booking-web-kfks.onrender.com" 
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
