@@ -675,7 +675,7 @@ app.get('/bookings/occupied', (req, res) => {
 // ==========================================
 // ✅ 3. ระบบการจองของลูกค้า
 // ==========================================
-app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov_card', maxCount: 1 }]), (req, res) => {
+app.post('/booking', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov_card', maxCount: 1 }]), (req, res) => {
     try {
         if (!req.files || !req.files['slip']) return res.status(400).json({ success: false, message: 'กรุณาแนบสลิปการโอนเงิน' });
 
@@ -716,7 +716,7 @@ app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov
 });
 
 app.post('/reserve', bookingUpload, (req, res) => {
-    req.url = '/bookings';
+    req.url = '/booking';
     app.handle(req, res);
 });
 
@@ -852,7 +852,7 @@ app.get('/check-availability', (req, res) => {
 // ==========================================
 // ✅ [แก้ไข] API ดึงข้อมูลการจองทั้งหมด (ดึงอีเมลให้ถูกต้อง)
 // ==========================================
-app.get('/bookings', (req, res) => {
+app.get('/booking', (req, res) => {
     const sql = `
         SELECT 
             b.booking_id AS id, 

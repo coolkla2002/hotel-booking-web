@@ -201,7 +201,7 @@ const AdminManagement = () => {
                                             <th className="p-4 font-bold">ลำดับ</th>
                                             <th className="p-4 font-bold">ชื่อ</th>
                                             <th className="p-4 font-bold">อีเมล</th>
-                                            <th className="p-4 font-bold">เพศ</th>
+                                            
                                             <th className="p-4 font-bold">วันเกิด</th>
                                             <th className="p-4 font-bold">เบอร์โทร</th>
                                             <th className="p-4 font-bold text-center">บทบาท (Role)</th>
@@ -315,19 +315,74 @@ const AdminManagement = () => {
                             <button onClick={() => setShowUserModal(false)} className="hover:bg-white/20 p-1 rounded-full"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleUserSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-สกุล</label>
-                                <input type="text" required className="w-full border p-2 rounded-lg" value={currentUser.fullname || ""} onChange={e => setCurrentUser({ ...currentUser, fullname: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">อีเมล</label>
-                                <input type="email" required className="w-full border p-2 rounded-lg" value={currentUser.email || ""} onChange={e => setCurrentUser({ ...currentUser, email: e.target.value })} />
-                            </div>
-                            <div className="flex gap-3 justify-end pt-4 border-t">
-                                <button type="button" onClick={() => setShowUserModal(false)} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-50 rounded-xl">ยกเลิก</button>
-                                <button type="submit" className="px-8 py-2 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700">บันทึก</button>
-                            </div>
-                        </form>
+    {/* 1. ชื่อ-สกุล (แก้ไขได้) */}
+    <div>
+        <label className="block text-sm font-bold text-gray-700 mb-1">ชื่อ-สกุล</label>
+        <input 
+            type="text" 
+            required 
+            className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
+            value={currentUser.fullname || ""} 
+            onChange={e => setCurrentUser({ ...currentUser, fullname: e.target.value })} 
+        />
+    </div>
+
+    {/* 2. วันเกิด (แก้ไขได้) */}
+    <div>
+        <label className="block text-sm font-bold text-gray-700 mb-1">วันเกิด</label>
+        <input 
+            type="date" 
+            className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
+            value={currentUser.birthdate || ""} 
+            onChange={e => setCurrentUser({ ...currentUser, birthdate: e.target.value })} 
+        />
+    </div>
+
+    {/* 3. เบอร์โทร (แก้ไขได้ - บังคับกรอกเฉพาะตัวเลข) */}
+    <div>
+        <label className="block text-sm font-bold text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+        <input 
+            type="text" 
+            maxLength="10"
+            className="w-full border p-2 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none" 
+            value={currentUser.phone || ""} 
+            onChange={e => {
+                const onlyNums = e.target.value.replace(/[^0-9]/g, ''); // บังคับรับเฉพาะตัวเลข
+                setCurrentUser({ ...currentUser, phone: onlyNums });
+            }} 
+        />
+    </div>
+
+    {/* 4. อีเมล (ล็อค แก้ไขไม่ได้) */}
+    <div>
+        <label className="block text-sm font-bold text-gray-700 mb-1">
+            อีเมล <span className="text-red-500 text-xs font-normal ml-2">* ไม่สามารถแก้ไขได้</span>
+        </label>
+        <input 
+            type="email" 
+            disabled 
+            className="w-full border p-2 rounded-lg bg-gray-200 text-gray-500 cursor-not-allowed" 
+            value={currentUser.email || ""} 
+        />
+    </div>
+
+    {/* ปุ่มกดยกเลิก / บันทึก */}
+    <div className="flex gap-3 justify-end pt-4 border-t">
+        <button 
+            type="button" 
+            onClick={() => setShowUserModal(false)} 
+            className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+        >
+            ยกเลิก
+        </button>
+        <button 
+            type="submit" 
+            className="px-8 py-2 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-colors"
+        >
+            บันทึก
+        </button>
+    </div>
+</form>
                     </div>
                 </div>
             )}
