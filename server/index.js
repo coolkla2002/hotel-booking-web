@@ -83,14 +83,6 @@ app.get('/fix-gov-db', (req, res) => {
     });
 });
 
-app.get('/fix-database', (req, res) => {
-    const sql = `ALTER TABLE users ADD COLUMN gender VARCHAR(20) NULL, ADD COLUMN birthdate DATE NULL`;
-    db.query(sql, (err) => {
-        if (err && err.code !== 'ER_DUP_FIELDNAME') return res.send(`<h2 style="color:red">❌ เกิดข้อผิดพลาด: ${err.message}</h2>`);
-        res.send('<h2 style="color:green">✅ สำเร็จ! เพิ่มคอลัมน์ gender และ birthdate ให้เรียบร้อยแล้ว</h2>');
-    });
-});
-
 app.get('/fix-customer-db', (req, res) => {
     const sql = `ALTER TABLE Customer ADD COLUMN sex VARCHAR(20) NULL, ADD COLUMN birthdate DATE NULL, ADD COLUMN profile_image VARCHAR(255) NULL`;
     db.query(sql, (err) => {
@@ -179,7 +171,7 @@ app.post('/login', (req, res) => {
             u.is_verified, 
             c.name, 
             c.phone,
-            c.sex AS gender,
+            c.sex,
             c.birthdate
         FROM UserAccount u
         LEFT JOIN Customer c ON u.user_id = c.user_id
@@ -296,7 +288,7 @@ app.get('/users', (req, res) => {
 
 app.put('/users/:id', (req, res) => {
     const userId = req.params.id;
-    const { name, fullname, email, phone, gender, birthdate, password } = req.body;
+    const { name, fullname, email, phone, sex, birthdate, password } = req.body;
 
     const finalName = name || fullname || '';
     
@@ -308,7 +300,7 @@ app.put('/users/:id', (req, res) => {
         }
     }
 
-    const finalGender = (gender && gender !== '-') ? gender : null;
+    const finalsex = (sex && sex !== '-') ? sex : null;
 
     // 1. เช็คก่อนว่ามีข้อมูลของ user_id นี้ในตาราง Customer หรือยัง?
     const checkSql = `SELECT * FROM Customer WHERE user_id = ?`;
@@ -326,17 +318,17 @@ app.put('/users/:id', (req, res) => {
             // ✅ มีข้อมูลแล้ว -> ให้อัปเดต (UPDATE)
             sqlCustomer = `
                 UPDATE Customer 
-                SET name = ?, email = ?, phone = ?, gender = ?, sex = ?, birthdate = ?
+                SET name = ?, email = ?, phone = ?, sex = ?, birthdate = ?
                 WHERE user_id = ?
             `;
-            paramsCustomer = [finalName, email, phone, finalGender, finalGender, finalBirthdate, userId];
+            paramsCustomer = [finalName, email, phone, finalsex, finalsex, finalBirthdate, userId];
         } else {
             // ✅ ยังไม่มีข้อมูล -> ให้เพิ่มใหม่ (INSERT)
             sqlCustomer = `
-                INSERT INTO Customer (user_id, name, email, phone, gender, sex, birthdate)
+                INSERT INTO Customer (user_id, name, email, phone, sex, birthdate)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
-            paramsCustomer = [userId, finalName, email, phone, finalGender, finalGender, finalBirthdate];
+            paramsCustomer = [userId, finalName, email, phone, finalsex, finalsex, finalBirthdate];
         }
 
         // 2. รันคำสั่งอัปเดตหรือเพิ่มข้อมูล
@@ -606,13 +598,13 @@ app.post('/verify-otp', (req, res) => {
 // ✅ แก้ไขข้อมูลส่วนตัว (User Profile)
 // ==========================================
 app.put('/update-user', (req, res) => {
-    const { id, name, phone, gender, birthdate, password } = req.body;
+    const { id, name, phone, sex, birthdate, password } = req.body;
     if (!id) return res.status(400).json({ success: false, message: "ไม่พบ User ID" });
 
     const validBirthdate = (!birthdate || birthdate === '') ? null : birthdate;
     const sqlCustomer = "UPDATE Customer SET name=?, phone=?, sex=?, birthdate=? WHERE user_id=?";
     
-    db.query(sqlCustomer, [name, String(phone), gender, validBirthdate, id], (err) => {
+    db.query(sqlCustomer, [name, String(phone), sex, validBirthdate, id], (err) => {
         if (err) return res.status(500).json({ success: false, message: "อัปเดต Customer พัง", error: err.message });
         
         if (password && password.trim() !== "") {
@@ -627,7 +619,7 @@ app.put('/update-user', (req, res) => {
 
     function fetchUpdatedUser(userId, res) {
         const fetchSql = `
-            SELECT ua.user_id AS id, ua.username AS email, ua.role, c.name, c.phone, c.sex AS gender, c.birthdate
+            SELECT ua.user_id AS id, ua.username AS email, ua.role, c.name, c.phone, c.sex, c.birthdate
             FROM UserAccount ua JOIN Customer c ON ua.user_id = c.user_id WHERE ua.user_id=?
         `;
         db.query(fetchSql, [userId], (e, r) => {
