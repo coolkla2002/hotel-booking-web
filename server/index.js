@@ -67,7 +67,7 @@ app.get('/fix-payment-method', (req, res) => {
     });
 });
 
-app.get('/fix-booking-date', (req, res) => {
+app.get('/fix-bookings-date', (req, res) => {
     const sql = `ALTER TABLE Booking ADD COLUMN booking_date DATETIME DEFAULT CURRENT_TIMESTAMP`;
     db.query(sql, (err) => {
         if (err && err.code !== 'ER_DUP_FIELDNAME') return res.send(`<h2 style="color:red">❌ เกิดข้อผิดพลาด: ${err.message}</h2>`);
@@ -99,7 +99,7 @@ app.get('/fix-rooms-db', (req, res) => {
     });
 });
 
-app.get('/fix-cancel-booking-db', (req, res) => {
+app.get('/fix-cancel-bookings-db', (req, res) => {
     const sql = `ALTER TABLE Booking ADD COLUMN cancel_reason TEXT NULL, ADD COLUMN refund_details TEXT NULL, ADD COLUMN refund_image VARCHAR(255) NULL`;
     db.query(sql, (err) => {
         if (err && err.code !== 'ER_DUP_FIELDNAME') return res.send(`<h2 style="color:red">❌ เกิดข้อผิดพลาด: ${err.message}</h2>`);
@@ -675,7 +675,7 @@ app.get('/bookings/occupied', (req, res) => {
 // ==========================================
 // ✅ 3. ระบบการจองของลูกค้า
 // ==========================================
-app.post('/booking', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov_card', maxCount: 1 }]), (req, res) => {
+app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov_card', maxCount: 1 }]), (req, res) => {
     try {
         if (!req.files || !req.files['slip']) return res.status(400).json({ success: false, message: 'กรุณาแนบสลิปการโอนเงิน' });
 
@@ -815,7 +815,7 @@ app.post('/admin/approve-reschedule', (req, res) => {
     });
 });
 
-app.post('/cancel-booking', upload.fields([{ name: 'refund_image', maxCount: 1 }, { name: 'refund_qr', maxCount: 1 }]), (req, res) => {
+app.post('/cancel-bookings', upload.fields([{ name: 'refund_image', maxCount: 1 }, { name: 'refund_qr', maxCount: 1 }]), (req, res) => {
     const booking_id = req.body.booking_id || req.body.id;
     const reason = req.body.reason || req.body.cancel_reason;
     const refund_details = req.body.refund_details || req.body.bank_account; 
@@ -852,7 +852,7 @@ app.get('/check-availability', (req, res) => {
 // ==========================================
 // ✅ [แก้ไข] API ดึงข้อมูลการจองทั้งหมด (ดึงอีเมลให้ถูกต้อง)
 // ==========================================
-app.get('/booking', (req, res) => {
+app.get('/bookings', (req, res) => {
     const sql = `
         SELECT 
             b.booking_id AS id, 
