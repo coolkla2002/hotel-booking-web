@@ -150,18 +150,7 @@ const AdminManagement = () => {
                         <div className="animate-fade-in">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-bold text-gray-800">รายการห้องพักทั้งหมด</h2>
-                                <button 
-                                    onClick={() => {
-                                        setIsEditing(false);
-                                        setCurrentRoom({ name: '', price: '', room_count: 15, amenities: '' });
-                                        setPreviews([]);
-                                        setSelectedFiles([]);
-                                        setShowRoomModal(true);
-                                    }}
-                                    className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition"
-                                >
-                                    <Plus size={20} /> เพิ่มประเภทห้องพัก
-                                </button>
+                                
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {rooms.map(room => (
