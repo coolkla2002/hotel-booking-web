@@ -434,10 +434,10 @@ app.post('/rooms', upload.array('room_image', 4), (req, res) => {
         
         // เพิ่มรูป 1-4 ลงในทุกลูกของ Room
         for(let i=1; i<=count; i++) {
-            roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId, pics[0], pics[1], pics[2], pics[3]]);
+            roomValues.push([`R${newRoomTypeId}-${String(i).padStart(2, '0')}`, 2, 'available', newRoomTypeId]);
         }
 
-        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture, picture2, picture3, picture4) VALUES ?', [roomValues], (err2) => {
+        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], (err2) => {
             if (err2) return res.status(500).json(err2);
             res.json({ message: 'Room added successfully with 4 images' });
         });
@@ -467,19 +467,6 @@ app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
 
     db.query(sql, params, (err) => {
         if (err) return res.status(500).json(err);
-
-        // อัปเดตรูปในตาราง Room ตามไปด้วยถ้ามีการเปลี่ยนรูป
-        if (req.files && req.files.length > 0) {
-            const p = [
-                req.files[0] ? req.files[0].filename : null,
-                req.files[1] ? req.files[1].filename : null,
-                req.files[2] ? req.files[2].filename : null,
-                req.files[3] ? req.files[3].filename : null,
-                id
-            ];
-            db.query('UPDATE Room SET picture=?, picture2=?, picture3=?, picture4=? WHERE room_type_id=?', p);
-        }
-
         // --- ส่วนจัดการจำนวนห้อง (คงไว้ตามเดิม ไม่แก้) ---
         if (room_count) {
             const targetCount = parseInt(room_count);
@@ -494,9 +481,9 @@ app.put('/rooms/:id', upload.array('room_image', 4), (req, res) => {
                     db.query('SELECT picture, picture2, picture3, picture4 FROM RoomType WHERE room_type_id=?', [id], (err3, rt) => {
                         const row = rt[0];
                         for(let i=1; i<=diff; i++) {
-                            roomValues.push([`R${id}-${Date.now().toString().slice(-4)}-${i}`, 2, 'available', id, row.picture, row.picture2, row.picture3, row.picture4]);
-                        }
-                        db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id, picture, picture2, picture3, picture4) VALUES ?', [roomValues], () => {
+                            roomValues.push([`R${id}-${Date.now().toString().slice(-4)}-${i}`, 2, 'available', id]);
+}
+db.query('INSERT INTO Room (roomnumber, capacity, status, room_type_id) VALUES ?', [roomValues], () => {
                             return res.json({ message: 'Room updated successfully (Added new rooms)' });
                         });
                     });
@@ -705,9 +692,9 @@ app.post('/bookings', upload.fields([{ name: 'slip', maxCount: 1 }, { name: 'gov
                 if (!roomRes || roomRes.length === 0) return res.status(400).json({ success: false, message: 'ไม่พบประเภทห้อง' });
                 
                 const room_id = roomRes[0].room_id;
-                const sqlBooking = `INSERT INTO Booking (cus_id, room_id, room_count, total_amount, check_in_date, check_out_date, booking_status, user_type, slip_image, id_card_image, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, NOW())`;
+                const sqlBooking = `INSERT INTO Booking (cus_id, room_id, room_count, total_amount, check_in_date, check_out_date, booking_status, user_type, id_card_image, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`;
                 
-                db.query(sqlBooking, [cus_id, room_id, parseInt(room_count) || 1, finalPrice, check_in_date, check_out_date, user_type || 'general', payment_slip, gov_card_file], (err, bookRes) => {
+                db.query(sqlBooking, [cus_id, room_id, parseInt(room_count) || 1, finalPrice, check_in_date, check_out_date, user_type || 'general', gov_card_file], (err, bookRes) => {
                     if (err) return res.status(500).json({ success: false, message: err.message });
                     const booking_id = bookRes.insertId;
 
@@ -867,7 +854,7 @@ app.get('/bookings', (req, res) => {
             b.booking_id AS id, 
             c.user_id AS user_id, 
             c.name AS fullname, 
-            u.username AS email,  -- 👈 เปลี่ยนมาดึงอีเมลจากตาราง UserAccount
+            u.username AS email,  
             rt.typename AS room_name, 
             b.room_count, 
             b.check_in_date, 
@@ -877,20 +864,18 @@ app.get('/bookings', (req, res) => {
             b.user_type, 
             b.id_card_image, 
             p.payment_slip AS slip_image, 
-            COALESCE(b.cancel_reason, cr.reason) AS cancel_reason, 
+            b.cancel_reason, 
             b.refund_details, 
             b.refund_image, 
-            rr.new_check_in AS request_check_in, 
-            rr.new_check_out AS request_check_out, 
-            rr.reason AS reschedule_reason
+            b.request_check_in, 
+            b.request_check_out, 
+            b.reschedule_reason
         FROM Booking b
         LEFT JOIN Customer c ON b.cus_id = c.cus_id
-        LEFT JOIN UserAccount u ON c.user_id = u.user_id -- 👈 เพิ่มการเชื่อมตาราง (JOIN) นี้เข้าไป
+        LEFT JOIN UserAccount u ON c.user_id = u.user_id 
         LEFT JOIN Room r ON b.room_id = r.room_id
         LEFT JOIN RoomType rt ON r.room_type_id = rt.room_type_id
         LEFT JOIN Payment p ON b.booking_id = p.booking_id
-        LEFT JOIN CancelReservation cr ON b.cancel_id = cr.cancel_id
-        LEFT JOIN RescheduleReservation rr ON b.reschedule_id = rr.reschedule_id
         ORDER BY b.booking_id DESC
     `;
     db.query(sql, (err, results) => {
