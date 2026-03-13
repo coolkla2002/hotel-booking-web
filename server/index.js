@@ -310,20 +310,20 @@ app.put('/users/:id', (req, res) => {
         let paramsCustomer = [];
 
         if (results.length > 0) {
-            // ✅ มีข้อมูลแล้ว -> ให้อัปเดต (UPDATE)
+            // ✅ แก้ไข UPDATE: ตัด finalsex ที่เกินออก 1 ตัว
             sqlCustomer = `
                 UPDATE Customer 
                 SET name = ?, email = ?, phone = ?, sex = ?, birthdate = ?
                 WHERE user_id = ?
             `;
-            paramsCustomer = [finalName, email, phone, finalsex, finalsex, finalBirthdate, userId];
+            paramsCustomer = [finalName, email, phone, finalsex, finalBirthdate, userId];
         } else {
-            // ✅ ยังไม่มีข้อมูล -> ให้เพิ่มใหม่ (INSERT)
+            // ✅ แก้ไข INSERT: ตัด ? ที่เกินออก 1 ตัว และตัด finalsex ที่ซ้ำออก
             sqlCustomer = `
                 INSERT INTO Customer (user_id, name, email, phone, sex, birthdate)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
             `;
-            paramsCustomer = [userId, finalName, email, phone, finalsex, finalsex, finalBirthdate];
+            paramsCustomer = [userId, finalName, email, phone, finalsex, finalBirthdate];
         }
 
         // 2. รันคำสั่งอัปเดตหรือเพิ่มข้อมูล
@@ -1008,6 +1008,63 @@ app.get('/admin/reschedule-requests', (req, res) => {
         // ส่งข้อมูลกลับไปเป็น JSON ให้ AdminDashboard ใช้งาน
         res.json(results);
     });
+});
+
+// --- ส่วนรับการจองห้องพัก ---
+app.post('/bookings', upload.fields([
+    { name: 'slip', maxCount: 1 }, 
+    { name: 'gov_card', maxCount: 1 }
+]), (req, res) => {
+    try {
+        // 1. ตรวจสอบว่ามีไฟล์สลิปส่งมาไหม
+        if (!req.files || !req.files['slip']) {
+            return res.status(400).json({ success: false, message: 'กรุณาแนบสลิปการโอนเงิน' });
+        }
+
+        const { user_id, room_name, price, check_in_date, check_out_date, payment_method, room_count, user_type } = req.body;
+        const payment_slip = req.files['slip'][0].filename; 
+        const gov_card_file = req.files['gov_card'] ? req.files['gov_card'][0].filename : null;
+
+        let finalPrice = parseFloat(price || 0);
+        // ส่วนลดข้าราชการ (ถ้ามี)
+        if (user_type === 'official') finalPrice = Math.max(0, finalPrice - 100);
+
+        // 2. ค้นหา cus_id จาก user_id
+        db.query('SELECT cus_id FROM Customer WHERE user_id = ?', [user_id], (err, cusRes) => {
+            if (err) return res.status(500).json({ success: false, message: 'DB Error (Customer Search)' });
+            if (!cusRes || cusRes.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลลูกค้า' });
+            
+            const cus_id = cusRes[0].cus_id;
+
+            // 3. ค้นหา room_id จากชื่อประเภทห้อง
+            db.query('SELECT r.room_id FROM Room r JOIN RoomType rt ON r.room_type_id = rt.room_type_id WHERE rt.typename = ? LIMIT 1', [room_name], (err, roomRes) => {
+                if (err) return res.status(500).json({ success: false, message: 'DB Error (Room Search)' });
+                if (!roomRes || roomRes.length === 0) return res.status(400).json({ success: false, message: 'ไม่พบประเภทห้องพักนี้' });
+                
+                const room_id = roomRes[0].room_id;
+
+                // 4. บันทึกลงตาราง Booking
+                const sqlBooking = `INSERT INTO Booking (cus_id, room_id, room_count, total_amount, check_in_date, check_out_date, booking_status, user_type, id_card_image, booking_date) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW())`;
+                
+                db.query(sqlBooking, [cus_id, room_id, parseInt(room_count) || 1, finalPrice, check_in_date, check_out_date, user_type || 'general', gov_card_file], (err, bookRes) => {
+                    if (err) return res.status(500).json({ success: false, message: 'บันทึกการจองล้มเหลว: ' + err.message });
+                    
+                    const booking_id = bookRes.insertId;
+
+                    // 5. บันทึกลงตาราง Payment
+                    const sqlPayment = `INSERT INTO Payment (booking_id, payment_slip, payment_date, payment_status, payment_method, amount) VALUES (?, ?, NOW(), 'pending', ?, ?)`;
+                    db.query(sqlPayment, [booking_id, payment_slip, payment_method || 'transfer', finalPrice], (err) => {
+                        if (err) return res.status(500).json({ success: false, message: 'บันทึกการชำระเงินล้มเหลว' });
+                        
+                        res.json({ success: true, message: 'บันทึกการจองสำเร็จ!', booking_id: booking_id });
+                    });
+                });
+            });
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'ระบบเกิดข้อผิดพลาดร้ายแรง' });
+    }
 });
 
 const PORT = process.env.PORT || 3001;
